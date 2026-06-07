@@ -1642,7 +1642,7 @@ api_key = (st.session_state.get(“gemini_api_key_input”, “”) or
 os.environ.get(“GEMINI_API_KEY”, “”)).strip()
 if not api_key:
 raise ValueError(“사이드바에 Gemini API 키를 입력해 주세요.”)
-model_name = st.session_state.get(“gemini_model”, “gemini-1.5-flash”)
+model_name = st.session_state.get(“gemini_model”, “gemini-2.5-flash”)
 genai.configure(api_key=api_key)
 
 ```
