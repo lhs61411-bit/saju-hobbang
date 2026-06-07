@@ -296,6 +296,31 @@ section[data-testid="stSidebar"] .stMarkdown{color:#1a1a1a !important;}
 .ai-banner-title{font-family:'Noto Serif KR',serif;font-size:1.25rem;
   font-weight:700;color:#8b1a1a;letter-spacing:.04em;}
 .ai-banner-sub{font-size:.85rem;color:#666;margin-top:.3rem;}
+/* AI 리포트 제목 — 헤더 스타일(천명도 아래에 자연스럽게) */
+.ai-header-block{text-align:center;padding:.3rem 0 1rem;margin-bottom:.5rem;}
+.ai-header-title{font-family:'Noto Serif KR',serif;font-size:1.5rem;
+  font-weight:700;color:#8b1a1a;letter-spacing:.05em;}
+.ai-header-sub{font-size:.9rem;color:#777;margin-top:.4rem;}
+/* AI 리포트 생성 버튼 강조 — 노란 테두리 + 큰 글씨 */
+.ai-section div[data-testid="stButton"] > button[kind="secondary"],
+.ai-section .stButton > button{
+  background:linear-gradient(135deg,#c0392b 0%,#a93226 100%) !important;
+  color:#fff !important;
+  border:3px solid #f1c40f !important;
+  border-radius:10px !important;
+  font-size:1.15rem !important;
+  font-weight:700 !important;
+  letter-spacing:.03em !important;
+  padding:.85rem !important;
+  box-shadow:0 4px 14px rgba(192,57,43,.35) !important;
+  transition:all .2s !important;
+}
+.ai-section .stButton > button:hover{
+  background:linear-gradient(135deg,#a93226 0%,#922b21 100%) !important;
+  border-color:#f39c12 !important;
+  box-shadow:0 6px 20px rgba(192,57,43,.5) !important;
+  transform:translateY(-2px) !important;
+}
 
 .divider{border:none;border-top:1px solid #e8e8e8;margin:1.2rem 0;}
 #MainMenu{visibility:hidden;} footer{visibility:hidden;}
@@ -2092,9 +2117,9 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
     """AI 명리 리포트 — 독립 섹션 (탭 외부)"""
     st.markdown('<div class="ai-section">', unsafe_allow_html=True)
     st.markdown(
-        f'<div class="ai-banner">'
-        f'<div class="ai-banner-title">🤖 AI 명리 종합 해석 리포트</div>'
-        f'<div class="ai-banner-sub">{r["meta"]["name"]}님의 사주를 AI가 12개 영역으로 입체 분석</div>'
+        f'<div class="ai-header-block">'
+        f'<div class="ai-header-title">🔮 AI 명리 종합 해석 리포트</div>'
+        f'<div class="ai-header-sub">{r["meta"]["name"]}님의 사주를 AI가 12개 영역으로 입체 분석합니다</div>'
         f'</div>',
         unsafe_allow_html=True)
 
@@ -2117,7 +2142,7 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
 
     c_gen, c_clr = st.columns([4, 1])
     with c_gen:
-        gen_btn = st.button("✦  AI 종합 리포트 생성하기", key=f"gen_{cache_key}",
+        gen_btn = st.button("👇 여기를 눌러 AI 종합 리포트 생성하기 👇", key=f"gen_{cache_key}",
                             use_container_width=True)
     with c_clr:
         if st.button("🗑", key=f"clr_{cache_key}", use_container_width=True,
