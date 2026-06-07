@@ -301,24 +301,34 @@ section[data-testid="stSidebar"] .stMarkdown{color:#1a1a1a !important;}
 .ai-header-title{font-family:'Noto Serif KR',serif;font-size:1.5rem;
   font-weight:700;color:#8b1a1a;letter-spacing:.05em;}
 .ai-header-sub{font-size:.9rem;color:#777;margin-top:.4rem;}
-/* AI 리포트 생성 버튼 강조 — 노란 테두리 + 큰 글씨 */
-.ai-section div[data-testid="stButton"] > button[kind="secondary"],
-.ai-section .stButton > button{
+/* AI 리포트 생성 버튼(primary) 강조 — 전역 강력 선택자 */
+button[kind="primary"],
+button[data-testid="stBaseButton-primary"],
+.stButton > button[kind="primary"],
+div[data-testid="stButton"] button[kind="primary"]{
   background:linear-gradient(135deg,#c0392b 0%,#a93226 100%) !important;
-  color:#fff !important;
-  border:3px solid #f1c40f !important;
-  border-radius:10px !important;
-  font-size:1.15rem !important;
-  font-weight:700 !important;
-  letter-spacing:.03em !important;
-  padding:.85rem !important;
-  box-shadow:0 4px 14px rgba(192,57,43,.35) !important;
+  color:#ffffff !important;
+  border:4px solid #f1c40f !important;
+  border-radius:12px !important;
+  font-size:1.35rem !important;
+  font-weight:800 !important;
+  letter-spacing:.04em !important;
+  padding:1.3rem 1rem !important;
+  min-height:64px !important;
+  box-shadow:0 4px 16px rgba(192,57,43,.4) !important;
   transition:all .2s !important;
 }
-.ai-section .stButton > button:hover{
+button[kind="primary"] *,
+button[data-testid="stBaseButton-primary"] *{
+  color:#ffffff !important;
+  font-size:1.35rem !important;
+  font-weight:800 !important;
+}
+button[kind="primary"]:hover,
+button[data-testid="stBaseButton-primary"]:hover{
   background:linear-gradient(135deg,#a93226 0%,#922b21 100%) !important;
   border-color:#f39c12 !important;
-  box-shadow:0 6px 20px rgba(192,57,43,.5) !important;
+  box-shadow:0 6px 24px rgba(241,196,15,.5) !important;
   transform:translateY(-2px) !important;
 }
 
@@ -2142,8 +2152,8 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
 
     c_gen, c_clr = st.columns([4, 1])
     with c_gen:
-        gen_btn = st.button("👇 여기를 눌러 AI 종합 리포트 생성하기 👇", key=f"gen_{cache_key}",
-                            use_container_width=True)
+        gen_btn = st.button("AI 종합 리포트 생성하기", key=f"gen_{cache_key}",
+                            use_container_width=True, type="primary")
     with c_clr:
         if st.button("🗑", key=f"clr_{cache_key}", use_container_width=True,
                      help="캐시 초기화"):
