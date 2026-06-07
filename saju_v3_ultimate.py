@@ -304,19 +304,24 @@ section[data-testid="stSidebar"] .stMarkdown{color:#1a1a1a !important;}
    ════════════════════════════════════════════════ */
 /* 사이드바 본체 */
 section[data-testid="stSidebar"]{
-  display:block!important;
-  transform:translateX(0)!important;
-  min-width:280px!important;
-  visibility:visible!important;
   background:#fdfaf2 !important;
 }
 section[data-testid="stSidebar"] > div{background:#fdfaf2 !important;}
+/* 사이드바 토글 버튼 — 잘 보이게 강조 */
 [data-testid="stSidebarCollapseButton"],
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="collapsedControl"],
 button[aria-label="Close sidebar"],
 button[aria-label="Collapse sidebar"],
-button[aria-label="Open sidebar"]{display:none!important;}
+button[aria-label="Open sidebar"]{
+  display:flex!important;visibility:visible!important;
+  color:#c0392b !important;background:#fff !important;
+  border:1px solid #e0d5b8 !important;border-radius:6px !important;
+}
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="collapsedControl"] svg,
+button[aria-label="Open sidebar"] svg,
+button[aria-label="Close sidebar"] svg{fill:#c0392b !important;color:#c0392b !important;}
 
 /* 사이드바 모든 텍스트 강제 진한색 */
 section[data-testid="stSidebar"],
@@ -2121,22 +2126,52 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
             st.rerun()
 
     if cache_key in st.session_state:
-        st.markdown(f'<div class="llm-report">{st.session_state[cache_key]}</div>',
+        report_text = st.session_state[cache_key]
+        # 복사용 안전 처리 (JS 문자열 이스케이프)
+        import html as _html, json as _json
+        safe_js = _json.dumps(report_text)  # JS 안전 문자열
+        btn_id_top = f"copytop_{abs(hash(cache_key)) % 100000}"
+        btn_id_bot = f"copybot_{abs(hash(cache_key)) % 100000}"
+
+        # ── 상단 복사 버튼 ──
+        st.markdown(
+            f'''<button id="{btn_id_top}" onclick='navigator.clipboard.writeText({safe_js}).then(()=>{{
+                this.innerText="✓ 복사 완료!";this.style.background="#2e7d32";
+                setTimeout(()=>{{this.innerText="📋 리포트 전체 복사";this.style.background="#8b1a1a";}},2000);
+            }})' style="width:100%;padding:.7rem;background:#8b1a1a;color:#fff;border:none;
+            border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-bottom:.6rem">
+            📋 리포트 전체 복사</button>''',
+            unsafe_allow_html=True)
+
+        # ── 리포트 본문 ──
+        st.markdown(f'<div class="llm-report">{report_text}</div>',
                     unsafe_allow_html=True)
+
+        # ── 하단 복사 버튼 ──
+        st.markdown(
+            f'''<button id="{btn_id_bot}" onclick='navigator.clipboard.writeText({safe_js}).then(()=>{{
+                this.innerText="✓ 복사 완료!";this.style.background="#2e7d32";
+                setTimeout(()=>{{this.innerText="📋 리포트 전체 복사";this.style.background="#8b1a1a";}},2000);
+            }})' style="width:100%;padding:.7rem;background:#8b1a1a;color:#fff;border:none;
+            border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:.6rem">
+            📋 리포트 전체 복사</button>''',
+            unsafe_allow_html=True)
+
         st.caption("✦ 캐시된 리포트 · 🗑 버튼으로 초기화 후 재생성 가능")
     elif gen_btn:
         try:
             streamed = st.write_stream(generate_llm_report(r, extra))
             result_text = streamed if isinstance(streamed, str) else str(streamed)
             st.session_state[cache_key] = result_text
-            st.success("✦ 리포트 생성 완료")
+            st.success("✦ 리포트 생성 완료! 새로고침하면 복사 버튼이 나타납니다.")
+            st.rerun()
         except Exception as e:
             err = str(e)
             if "429" in err:
                 st.error(
                     "⚠️ API 한도 초과 (429)\n\n"
                     "1. 1~2분 후 재시도\n"
-                    "2. 모델을 gemini-1.5-flash-8b 로 변경")
+                    "2. 모델을 gemini-2.5-flash-lite 로 변경")
             else:
                 st.error(f"오류: {e}")
 
