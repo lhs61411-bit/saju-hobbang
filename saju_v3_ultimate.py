@@ -1716,7 +1716,7 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
                os.environ.get("GEMINI_API_KEY", "")).strip()
     if not api_key:
         raise ValueError("사이드바에 Gemini API 키를 입력해 주세요.")
-    model_name = st.session_state.get("gemini_model", "gemini-2.5-flash")
+    model_name = st.session_state.get("gemini_model", "gemini-2.5-flash-lite")
     genai.configure(api_key=api_key)
 
     # ── 데이터 추출 ──
@@ -1887,9 +1887,10 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 - 사주 글자에 근거한 구체적 분석 (막연한 일반론 금지)
 - 영역 간 내용 중복 절대 금지 — 각 영역은 새로운 통찰
 - 미신적 단정("반드시 망한다" 등) 대신 가능성과 조언으로
-- 각 영역을 지정된 글자수에 맞춰 작성 (너무 길게 늘어지지 말 것)
-- 전체 분량 약 4,500자 — 모든 12개 영역을 빠짐없이 완성하는 것이 최우선
-- 도중에 끊기지 않도록 각 영역을 간결하면서도 알차게 작성
+- 각 영역을 지정된 글자수에 맞춰 작성 (절대 초과하지 말 것)
+- 전체 분량 약 4,000자 — 12개 영역을 모두 완성하는 것이 가장 중요
+- 도중에 끊기면 안 되므로, 각 영역을 간결하고 핵심적으로 작성
+- 12개 영역을 반드시 다 쓰고 마지막 종합까지 완성할 것
 """
 
     model = genai.GenerativeModel(model_name)
@@ -1899,11 +1900,11 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
     try:
         # 신형 config (thinking 제어 지원 시)
         gen_config = genai.types.GenerationConfig(
-            max_output_tokens=16384,
+            max_output_tokens=8192,
             temperature=0.85,
         )
     except Exception:
-        gen_config = {"max_output_tokens": 16384, "temperature": 0.85}
+        gen_config = {"max_output_tokens": 8192, "temperature": 0.85}
 
     # thinking_budget=0 으로 추론 토큰 소모 차단 (지원 모델에서만)
     request_opts = {"generation_config": gen_config}
@@ -1911,7 +1912,7 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
         from google.generativeai import types as _gtypes
         if hasattr(_gtypes, "ThinkingConfig"):
             gen_config = _gtypes.GenerationConfig(
-                max_output_tokens=16384,
+                max_output_tokens=8192,
                 temperature=0.85,
                 thinking_config=_gtypes.ThinkingConfig(thinking_budget=0),
             )
@@ -1953,7 +1954,7 @@ def chat_with_saju(saju_json: dict, history: list, user_msg: str):
                os.environ.get("GEMINI_API_KEY", "")).strip()
     if not api_key:
         return "사이드바에 Gemini API 키를 입력해 주세요."
-    model_name = st.session_state.get("gemini_model", "gemini-2.5-flash")
+    model_name = st.session_state.get("gemini_model", "gemini-2.5-flash-lite")
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(model_name)
 
@@ -3438,10 +3439,10 @@ def main():
         # 모델 리스트 강제 초기화 (캐시 버전 키 v3로 갱신)
         if st.session_state.get("models_cache_ver") != "v3":
             st.session_state["available_models"] = [
-                "gemini-2.5-flash",
                 "gemini-2.5-flash-lite",
-                "gemini-2.0-flash",
+                "gemini-2.5-flash",
                 "gemini-3-flash",
+                "gemini-flash-latest",
             ]
             st.session_state["models_cache_ver"] = "v3"
 
