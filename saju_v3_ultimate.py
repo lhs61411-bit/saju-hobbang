@@ -1825,53 +1825,57 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
     if extra:
         core += f"\n[추가 정보]\n{extra}"
 
-    prompt = f"""당신은 50년 경력의 따뜻한 명리학 상담가입니다.
-아래 사주 데이터로 12개 영역을 모두 분석하는 종합 리포트를 작성하세요.
+    prompt = f"""당신은 50년 경력의 따뜻하고 통찰력 있는 명리학 상담가입니다.
+아래 사주 데이터로 12개 영역을 모두 분석하는 풍부한 종합 리포트를 작성하세요.
 
 {core}
 
-다음 12개 영역을 빠짐없이 작성하세요. 각 영역은 핵심만 간결하게(2~3문장),
-명리 용어는 괄호로 풀이하고, 사주에 근거해 구체적으로 쓰세요. 반복 금지.
+【작성 규칙】
+- 12개 영역을 빠짐없이 모두 작성하고 마지막까지 완성하세요 (이게 가장 중요)
+- 각 영역은 4~5문장, 약 200자 분량으로 알차게 작성
+- 명리 용어는 괄호로 쉽게 풀이 (예: 식신(食神, 표현·재능의 기운))
+- 사주 글자에 근거해 구체적으로, 영역 간 내용 반복 금지
+- 따뜻한 존댓말, 때때로 위트있게
 
 ## 📜 1. 타고난 본질
-일간({r["ilgan"]["stem"]}, {r["ilgan"]["ohaeng"]})의 성격, 강점·약점, 일지({r["pillars"]["day"]["branch"]})가 보여주는 속마음.
+일간({r["ilgan"]["stem"]}, {r["ilgan"]["ohaeng"]})을 자연물에 비유한 성격, 강점·약점, 일지({r["pillars"]["day"]["branch"]})가 보여주는 속마음과 겉모습의 차이.
 
 ## ⚖️ 2. 오행의 균형
-과한 기운과 부족한 기운, 그것이 성격·건강에 미치는 영향과 보완법.
+과한 기운과 부족한 기운, 그것이 성격·건강·인간관계에 미치는 영향, 부족한 기운을 채우는 실천법.
 
 ## 🏛️ 3. 격국
-{r["yukguk"]}의 의미와 이 사람이 빛나는 무대.
+{r["yukguk"]}의 의미와 이 사람이 가장 빛나는 무대, 세상과 관계 맺는 방식.
 
 ## 🔑 4. 용신
-용신({r["yongshin"].get("용신","")})이 필요한 이유와 강화법, 기신({r["yongshin"].get("기신","")}) 주의점.
+용신({r["yongshin"].get("용신","")})이 필요한 이유와 강화하는 직업·환경·습관, 기신({r["yongshin"].get("기신","")}) 주의점.
 
 ## 💰 5. 재물운
-재물 그릇과 흐름, 사업형/직장형, 돈 들어오는 시기와 분야.
+재성 구조로 본 재물 그릇과 흐름, 사업형/직장형, 큰돈 들어오는 시기와 분야, 돈 관리 조언.
 
 ## 💼 6. 직업운
-잘 맞는 직군, 조직/창업 적합도, 커리어 흐름과 승진 시기.
+잘 맞는 직군, 조직생활/창업 적합도, 30·40·50대 커리어 흐름과 승진 시기.
 
 ## ❤️ 7. 사랑·결혼운
-배우자궁({r["pillars"]["day"]["branch"]})으로 본 인연, 결혼 시기. {"(배우자궁 충 주의)" if spouse_warn else ""}
+배우자궁({r["pillars"]["day"]["branch"]})으로 본 인연의 모습, 연애 스타일, 결혼 시기. {"배우자궁 충(沖)이 있어 관계 부침 주의. " if spouse_warn else ""}좋은 인연 지키는 법.
 
 ## 🏥 8. 건강운
-약한 오행({r["career_health"]["약한오행"]})으로 주의할 부위와 건강 조언.
+약한 오행({r["career_health"]["약한오행"]})으로 주의할 신체 부위와 질환, 현재 대운의 건강 포인트, 음식·운동 조언.
 
 ## 🌊 9. 현재 대운
-대운 {cd["stem"]}{cd["branch"]}({cd['age']}~{cd['age']+9}세)의 기운과 핵심 키워드, 할 일.
+대운 {cd["stem"]}{cd["branch"]}({cd['age']}~{cd['age']+9}세)의 기운과 분위기, 핵심 키워드 3개, 할 일과 조심할 것.
 
 ## 📅 10. {cur_year}년 올해 운세
-올해 전체 흐름, 좋은 달과 조심할 달, 분야별 포인트.
+올해 전체 흐름, 가장 좋은 달과 조심할 달, 재물·일·연애·건강 분야별 포인트.
 
 ## 🔮 11. 다가올 3년
-{cur_year+1}~{cur_year+2}년 흐름과 준비할 것.
+{cur_year+1}~{cur_year+2}년의 큰 흐름과 기회·변화, 지금부터 준비할 것, 터닝포인트.
 
 ## ⭐ 12. 종합 조언
-강점 한 가지, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
+가장 빛나는 강점, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
 
-【필수】 반드시 12개 영역을 모두 완성하고 끝내세요. 각 영역 2~3문장으로 간결하게."""
+【필수】 12개 영역을 모두 빠짐없이 쓰고 12번 종합까지 완성하세요. 각 영역 약 200자."""
     model = genai.GenerativeModel(model_name)
-    gen_config = {"max_output_tokens": 8192, "temperature": 0.8}
+    gen_config = {"max_output_tokens": 12000, "temperature": 0.8}
     try:
         response = model.generate_content(prompt, generation_config=gen_config)
         text = ""
@@ -1881,6 +1885,12 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
             if response.candidates:
                 parts = response.candidates[0].content.parts
                 text = "".join(getattr(p, "text", "") for p in parts)
+        try:
+            fr = str(response.candidates[0].finish_reason)
+            if fr in ("2", "FinishReason.MAX_TOKENS", "MAX_TOKENS"):
+                text += "\n\n_(분량이 길어 일부 생략됨 — 다시 생성하거나 flash-lite 모델 권장)_"
+        except Exception:
+            pass
         if not text:
             text = "리포트 생성에 실패했습니다. 다시 시도해 주세요."
         yield text
