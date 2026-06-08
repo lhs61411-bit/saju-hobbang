@@ -301,6 +301,22 @@ section[data-testid="stSidebar"] .stMarkdown{color:#1a1a1a !important;}
 .ai-header-title{font-family:'Noto Serif KR',serif;font-size:1.5rem;
   font-weight:700;color:#8b1a1a;letter-spacing:.05em;}
 .ai-header-sub{font-size:.9rem;color:#777;margin-top:.4rem;}
+/* ── 채팅 상담실 ── */
+.chat-header{font-family:'Noto Serif KR',serif;font-size:1.3rem;font-weight:700;
+  color:#8b1a1a;margin-top:.5rem;}
+.chat-sub{font-size:.83rem;color:#777;margin:.3rem 0 .8rem;line-height:1.5;}
+.chat-box{background:#f0e8d8;border:1px solid #d4c4a8;border-radius:12px;
+  padding:1rem;min-height:120px;max-height:500px;overflow-y:auto;margin-bottom:.6rem;}
+.chat-empty{text-align:center;color:#999;padding:2rem 0;font-size:.9rem;line-height:1.8;}
+.chat-row{display:flex;margin-bottom:.7rem;}
+.chat-row.right{justify-content:flex-end;}
+.chat-row.left{justify-content:flex-start;}
+.bubble{max-width:78%;padding:.7rem 1rem;border-radius:16px;font-size:.92rem;
+  line-height:1.6;word-break:break-word;white-space:pre-wrap;}
+.bubble.user{background:#ffe44d;color:#1a1a1a;border-bottom-right-radius:4px;
+  box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.bubble.ai{background:#ffffff;color:#1a1a1a;border:1px solid #e0d5b8;
+  border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 /* AI 리포트 생성 버튼(primary) 강조 — 전역 강력 선택자 */
 button[kind="primary"],
 button[data-testid="stBaseButton-primary"],
@@ -1879,14 +1895,82 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
         "max_output_tokens": 8192,   # 긴 리포트 허용
         "temperature": 0.85,          # 풍부하고 다채로운 표현
     }
-    response = model.generate_content(prompt, stream=True,
-                                      generation_config=gen_config)
-    for chunk in response:
+    # 스트리밍 중 깨짐(500 deserializing) 방지 → 비스트리밍 1회 호출
+    try:
+        response = model.generate_content(prompt, generation_config=gen_config)
+        text = ""
         try:
-            if chunk.text:
-                yield chunk.text
+            text = response.text
         except Exception:
-            pass
+            # candidates에서 직접 추출 (안전망)
+            if response.candidates:
+                parts = response.candidates[0].content.parts
+                text = "".join(getattr(p, "text", "") for p in parts)
+        if not text:
+            text = "리포트 생성에 실패했습니다. 다시 시도해 주세요."
+        yield text
+    except Exception as e:
+        yield f"\n\n[리포트 생성 오류] {str(e)[:200]}\n\n잠시 후 다시 시도하거나 모델을 변경해 주세요."
+
+
+def chat_with_saju(saju_json: dict, history: list, user_msg: str):
+    """사주 기반 질의응답 — 역술원 상담 느낌"""
+    import os
+    api_key = (st.session_state.get("gemini_api_key_input", "") or
+               os.environ.get("GEMINI_API_KEY", "")).strip()
+    if not api_key:
+        return "사이드바에 Gemini API 키를 입력해 주세요."
+    model_name = st.session_state.get("gemini_model", "gemini-2.5-flash")
+    genai.configure(api_key=api_key)
+
+    r = saju_json
+    cur_year = datetime.now().year
+    cur_age  = cur_year - int(r["meta"]["birth"][:4])
+    cd = next((d for d in r["daeun"] if d["age"] <= cur_age < d["age"]+10), r["daeun"][0])
+
+    sysinfo = (
+        f"[상담 대상 사주]\n"
+        f"이름:{r['meta']['name']} 성별:{r['meta']['gender']} 생년:{r['meta']['birth']} (만 {cur_age}세)\n"
+        f"일주:{r['ilgan']['stem']}{r['pillars']['day']['branch']}({r['ilgan']['ohaeng']}) "
+        f"격국:{r['yukguk']} 강약:{r['yongshin']['강약']}\n"
+        f"용신:{r['yongshin'].get('용신','')} 희신:{r['yongshin'].get('희신','')} "
+        f"기신:{r['yongshin'].get('기신','')}\n"
+        f"오행:{json.dumps(r['ohaeng_score'],ensure_ascii=False)}\n"
+        f"현재대운:{cd['stem']}{cd['branch']}({cd['age']}~{cd['age']+9}세)\n"
+        f"사주원국: 년{r['pillars']['year']['stem']}{r['pillars']['year']['branch']} "
+        f"월{r['pillars']['month']['stem']}{r['pillars']['month']['branch']} "
+        f"일{r['pillars']['day']['stem']}{r['pillars']['day']['branch']} "
+        f"시{r['pillars']['hour']['stem']}{r['pillars']['hour']['branch']}"
+    )
+
+    # 대화 히스토리 구성
+    convo = ""
+    for turn in history:
+        role = "상담자" if turn["role"] == "user" else "역술가"
+        convo += f"\n{role}: {turn['content']}"
+
+    prompt = (
+        "당신은 따뜻하고 지혜로운 50년 경력 역술 상담가입니다.\n"
+        "아래 사주 정보를 바탕으로, 상담자의 질문에 친근하고 구체적으로 답하세요.\n"
+        "명리 용어는 괄호로 쉽게 풀이하고, 200~400자로 핵심을 짚되 따뜻하게 답하세요.\n"
+        "사주 근거를 들어 설명하고, 단정적 불운 예언 대신 조언과 가능성으로 답하세요.\n\n"
+        f"{sysinfo}\n"
+        f"\n[지금까지의 대화]{convo if convo else ' (없음)'}\n"
+        f"\n상담자: {user_msg}\n역술가:"
+    )
+
+    try:
+        resp = model.generate_content(
+            prompt, generation_config={"max_output_tokens": 2048, "temperature": 0.9})
+        try:
+            return resp.text
+        except Exception:
+            if resp.candidates:
+                parts = resp.candidates[0].content.parts
+                return "".join(getattr(p, "text", "") for p in parts) or "답변 생성 실패"
+            return "답변을 생성하지 못했습니다."
+    except Exception as e:
+        return f"오류: {str(e)[:150]}"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2284,6 +2368,87 @@ b.addEventListener("click", function(){
         _components2.html(bottom_html, height=58)
 
         st.caption("✦ 캐시된 리포트 · 🗑 버튼으로 삭제 후 재생성 가능")
+
+        # ════════════════════════════════════════════
+        # 💬 AI 역술 상담 채팅창
+        # ════════════════════════════════════════════
+        st.markdown('<hr class="divider">', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="chat-header">💬 AI 역술 상담실</div>'
+            '<div class="chat-sub">사주에 대해 궁금한 점을 자유롭게 물어보세요 '
+            '(예: 올해 이직해도 될까요? / 저랑 잘 맞는 사람은? / 건강 조심할 건?)</div>',
+            unsafe_allow_html=True)
+
+        chat_key = f"chat_{r['meta']['name']}_{r['meta']['birth']}"
+        if chat_key not in st.session_state:
+            st.session_state[chat_key] = []
+
+        # 대화 내역 표시 (카톡 스타일)
+        chat_html = '<div class="chat-box">'
+        if not st.session_state[chat_key]:
+            chat_html += ('<div class="chat-empty">아직 대화가 없습니다.<br>'
+                          '아래에 질문을 입력해 보세요 🔮</div>')
+        for turn in st.session_state[chat_key]:
+            if turn["role"] == "user":
+                chat_html += (f'<div class="chat-row right">'
+                              f'<div class="bubble user">{turn["content"]}</div></div>')
+            else:
+                chat_html += (f'<div class="chat-row left">'
+                              f'<div class="bubble ai">{turn["content"]}</div></div>')
+        chat_html += '</div>'
+        st.markdown(chat_html, unsafe_allow_html=True)
+
+        # 입력창
+        user_q = st.chat_input("질문을 입력하세요...", key=f"input_{chat_key}")
+        if user_q:
+            st.session_state[chat_key].append({"role": "user", "content": user_q})
+            with st.spinner("역술가가 답변 중..."):
+                answer = chat_with_saju(r, st.session_state[chat_key][:-1], user_q)
+            st.session_state[chat_key].append({"role": "assistant", "content": answer})
+            st.rerun()
+
+        # 채팅 초기화 + 전체 복사(리포트+채팅)
+        if st.session_state[chat_key]:
+            cc1, cc2 = st.columns([1, 1])
+            with cc1:
+                with st.container(key=f"clrchat_{abs(hash(chat_key))%10000}"):
+                    if st.button("🗑  대화 내용 지우기", key=f"clrc_{chat_key}",
+                                 use_container_width=True):
+                        st.session_state[chat_key] = []
+                        st.rerun()
+            with cc2:
+                # 리포트 + 채팅 합쳐서 복사
+                chat_text = "\n\n━━━ 💬 상담 대화 ━━━\n"
+                for turn in st.session_state[chat_key]:
+                    who = "❓ 질문" if turn["role"] == "user" else "🔮 답변"
+                    chat_text += f"\n[{who}] {turn['content']}\n"
+                full_copy = report_text + chat_text
+                import json as _json3
+                import streamlit.components.v1 as _components3
+                safe_full = _json3.dumps(full_copy)
+                allcopy_html = """<html><head><meta charset="utf-8"></head>
+<body style="margin:0">
+<button id="cpall" style="width:100%;padding:.7rem;background:#1565c0;
+  color:#fff;border:none;border-radius:8px;font-size:1.0rem;font-weight:700;
+  cursor:pointer;font-family:sans-serif;height:46px">📋 리포트+대화 전체 복사</button>
+<script>
+var A = __TEXT__;
+var x = document.getElementById("cpall");
+x.addEventListener("click", function(){
+  function ok(){ x.innerText="✓ 복사 완료!"; x.style.background="#2e7d32";
+    setTimeout(function(){ x.innerText="📋 리포트+대화 전체 복사"; x.style.background="#1565c0"; },2000); }
+  function fb(){ var t=document.createElement("textarea"); t.value=A;
+    document.body.appendChild(t); t.select();
+    try{ document.execCommand("copy"); ok(); }catch(e){ x.innerText="복사 실패"; }
+    document.body.removeChild(t); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(A).then(ok).catch(fb);
+  } else { fb(); }
+});
+</script>
+</body></html>""".replace("__TEXT__", safe_full)
+                _components3.html(allcopy_html, height=50)
+
     elif gen_btn:
         try:
             streamed = st.write_stream(generate_llm_report(r, extra))
