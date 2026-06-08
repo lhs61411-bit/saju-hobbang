@@ -1838,6 +1838,36 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
     if extra:
         core += f"\n[추가 정보]\n{extra}"
 
+    # 선택 영역(MBTI, 자미두수)을 동적으로 추가
+    mbti = r["meta"].get("mbti", "")
+    jami = r["meta"].get("jami", False)
+    extra_sections = ""
+    next_num = 13  # 12번 종합 다음 번호
+
+    if mbti:
+        core += f"\n[MBTI]\n- {mbti}"
+        extra_sections += f"""
+
+## 🧬 {next_num}. 사주 × MBTI 교차 분석 ({mbti})
+이 사람의 사주(타고난 기운)와 MBTI({mbti}, 현재 성격 유형)를 교차 분석하세요. 사주가 보여주는 본질과 {mbti} 성향이 일치하는 부분(시너지)과 충돌하는 부분(긴장)을 구체적으로 짚어주세요. 일간 오행과 {mbti}의 에너지 방향, 사주 십성 구조와 {mbti}의 사고·판단 방식이 어떻게 어울리는지. 타고난 운을 {mbti} 성격으로 잘 살리는 실용 조언으로 마무리. (350자 이상)"""
+        next_num += 1
+
+    if jami:
+        birth = r["meta"]["birth"]
+        gender = r["meta"]["gender"]
+        extra_sections += f"""
+
+## 🟣 {next_num}. 자미두수(紫微斗數) 명반 해석
+이 사람의 생년월일시({birth}, {gender})를 바탕으로 자미두수 관점에서 분석하세요. 자미두수는 인생을 12궁(명궁·재백궁·관록궁·부처궁·자녀궁·전택궁·복덕궁 등)으로 나눠 보는 동양 점성술입니다. 명궁(命宮)에 드는 주성(자미·천기·태양·무곡·천동·염정·천부·태음·탐랑·거문·천상·천량·칠살·파군 중)의 기운을 추정해 이 사람의 핵심 성향을 설명하고, 재백궁(재물)·관록궁(직업)·부처궁(배우자) 세 가지 주요 궁의 특징을 풀어주세요. 사주 분석과 자미두수가 공통적으로 가리키는 점, 혹은 다르게 보는 점을 짚어 입체감을 더하세요. (400자 이상)
+※ 자미두수는 유파별 차이가 있어 참고용 해석임을 자연스럽게 언급."""
+        next_num += 1
+
+    total_areas = next_num - 1
+    if extra_sections:
+        final_instr = f"【필수】 {total_areas}개 영역을 모두 빠짐없이 쓰고 마지막 영역까지 완성하세요. 각 영역 약 300자로 풍부하게."
+    else:
+        final_instr = "【필수】 12개 영역을 모두 빠짐없이 쓰고 12번 종합까지 완성하세요. 각 영역 약 300자로 풍부하게, 단 도중에 끊기지 않도록 균형있게 작성."
+
     prompt = f"""당신은 50년 경력의 따뜻하고 통찰력 있는 명리학 상담가입니다.
 아래 사주 데이터로 12개 영역을 모두 분석하는 풍부한 종합 리포트를 작성하세요.
 
@@ -1885,10 +1915,11 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 
 ## ⭐ 12. 종합 조언
 가장 빛나는 강점, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
+{extra_sections}
 
-【필수】 12개 영역을 모두 빠짐없이 쓰고 12번 종합까지 완성하세요. 각 영역 약 300자로 풍부하게, 단 도중에 끊기지 않도록 균형있게 작성."""
+{final_instr}"""
     model = genai.GenerativeModel(model_name)
-    gen_config = {"max_output_tokens": 12000, "temperature": 0.8}
+    gen_config = {"max_output_tokens": 13000, "temperature": 0.8}
     try:
         response = model.generate_content(prompt, generation_config=gen_config)
         text = ""
@@ -2272,7 +2303,7 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
     st.markdown(
         f'<div class="ai-header-block">'
         f'<div class="ai-header-title">🔮 AI 명리 종합 해석 리포트</div>'
-        f'<div class="ai-header-sub">{r["meta"]["name"]}님의 사주를 AI가 12개 영역으로 입체 분석합니다</div>'
+        f'<div class="ai-header-sub">{r["meta"]["name"]}님의 사주를 AI가 {12 + (1 if r["meta"].get("mbti") else 0) + (1 if r["meta"].get("jami") else 0)}개 영역으로 입체 분석합니다</div>'
         f'</div>',
         unsafe_allow_html=True)
 
@@ -3354,6 +3385,15 @@ def main():
                 st.number_input("시 (0~23)", 0,   23,   12,   key="hour_"  + str(sid),
                                 help="24시간제")
                 st.number_input("분 (0~59)", 0,   59,    0,   key="min_"   + str(sid))
+                st.selectbox("MBTI (선택)",
+                             ["모름", "INTJ","INTP","ENTJ","ENTP",
+                              "INFJ","INFP","ENFJ","ENFP",
+                              "ISTJ","ISFJ","ESTJ","ESFJ",
+                              "ISTP","ISFP","ESTP","ESFP"],
+                             key="mbti_" + str(sid),
+                             help="입력 시 사주×MBTI 교차 분석이 리포트에 추가됩니다")
+                st.checkbox("🟣 자미두수 분석 추가 (선택)", key="jami_" + str(sid),
+                            help="체크 시 자미두수(紫微斗數) 관점의 12궁 해석이 리포트에 추가됩니다")
 
         if delete_sid is not None:
             st.session_state.slot_ids.remove(delete_sid)
@@ -3547,6 +3587,9 @@ def main():
                 actual_hour = (h * 60 + mn) // 60
                 r = build_saju_result(y, m, d, actual_hour, gender, name,
                                       hanja_name=hanja)
+                mbti = st.session_state.get("mbti_" + str(sid), "모름")
+                r["meta"]["mbti"] = mbti if mbti != "모름" else ""
+                r["meta"]["jami"] = bool(st.session_state.get("jami_" + str(sid), False))
                 results.append(r)
                 birth_years.append(y)
 
