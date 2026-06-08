@@ -331,6 +331,22 @@ button[data-testid="stBaseButton-primary"]:hover{
   box-shadow:0 6px 24px rgba(241,196,15,.5) !important;
   transform:translateY(-2px) !important;
 }
+/* AI 섹션의 삭제하기 버튼(secondary) — 생성 버튼과 높이 맞춤 */
+.ai-section button[kind="secondary"],
+.ai-section div[data-testid="stButton"] button:not([kind="primary"]){
+  background:#fff !important;
+  color:#8b1a1a !important;
+  border:2px solid #c0392b !important;
+  border-radius:12px !important;
+  font-size:1.05rem !important;
+  font-weight:700 !important;
+  min-height:64px !important;
+  padding:1rem !important;
+}
+.ai-section button[kind="secondary"]:hover{
+  background:#fbe9e7 !important;
+  border-color:#8b1a1a !important;
+}
 
 .divider{border:none;border-top:1px solid #e8e8e8;margin:1.2rem 0;}
 #MainMenu{visibility:hidden;} footer{visibility:hidden;}
@@ -2150,47 +2166,67 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
     if active_g:
         extra += f"\n[귀인] {', '.join(active_g)} 활성"
 
-    c_gen, c_clr = st.columns([4, 1])
-    with c_gen:
-        gen_btn = st.button("AI 종합 리포트 생성하기", key=f"gen_{cache_key}",
+    has_cache = cache_key in st.session_state
+    if not has_cache:
+        # 리포트 없을 때: 생성 버튼만 꽉 차게
+        gen_btn = st.button("✦  AI 종합 리포트 생성하기", key=f"gen_{cache_key}",
                             use_container_width=True, type="primary")
-    with c_clr:
-        if st.button("🗑", key=f"clr_{cache_key}", use_container_width=True,
-                     help="캐시 초기화"):
-            st.session_state.pop(cache_key, None)
-            st.rerun()
+    else:
+        # 리포트 있을 때: 다시 생성 + 삭제 버튼 나란히 (같은 높이)
+        gen_btn = False
+        c_re, c_del = st.columns(2)
+        with c_re:
+            if st.button("🔄  새로 다시 생성하기", key=f"gen_{cache_key}",
+                         use_container_width=True, type="primary"):
+                st.session_state.pop(cache_key, None)
+                st.rerun()
+        with c_del:
+            if st.button("🗑  리포트 삭제하기", key=f"clr_{cache_key}",
+                         use_container_width=True):
+                st.session_state.pop(cache_key, None)
+                st.rerun()
 
     if cache_key in st.session_state:
         report_text = st.session_state[cache_key]
-        # 복사용 안전 처리 (JS 문자열 이스케이프)
-        import html as _html, json as _json
+        import json as _json
+        import streamlit.components.v1 as _components
+
         safe_js = _json.dumps(report_text)  # JS 안전 문자열
-        btn_id_top = f"copytop_{abs(hash(cache_key)) % 100000}"
-        btn_id_bot = f"copybot_{abs(hash(cache_key)) % 100000}"
+
+        def _copy_button():
+            html = """<html><head><meta charset="utf-8"></head>
+<body style="margin:0">
+<button id="cpbtn" style="width:100%;padding:.85rem;background:#8b1a1a;
+  color:#fff;border:none;border-radius:8px;font-size:1.05rem;font-weight:700;
+  cursor:pointer;font-family:sans-serif">📋 리포트 전체 복사</button>
+<script>
+var REPORT = __TEXT__;
+var btn = document.getElementById("cpbtn");
+btn.addEventListener("click", function(){
+  navigator.clipboard.writeText(REPORT).then(function(){
+    btn.innerText = "✓ 복사 완료!";
+    btn.style.background = "#2e7d32";
+    setTimeout(function(){
+      btn.innerText = "📋 리포트 전체 복사";
+      btn.style.background = "#8b1a1a";
+    }, 2000);
+  }).catch(function(){
+    btn.innerText = "복사 실패 - 길게 눌러 직접 복사하세요";
+  });
+});
+</script>
+</body></html>""".replace("__TEXT__", safe_js)
+            _components.html(html, height=58)
 
         # ── 상단 복사 버튼 ──
-        st.markdown(
-            f'''<button id="{btn_id_top}" onclick='navigator.clipboard.writeText({safe_js}).then(()=>{{
-                this.innerText="✓ 복사 완료!";this.style.background="#2e7d32";
-                setTimeout(()=>{{this.innerText="📋 리포트 전체 복사";this.style.background="#8b1a1a";}},2000);
-            }})' style="width:100%;padding:.7rem;background:#8b1a1a;color:#fff;border:none;
-            border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-bottom:.6rem">
-            📋 리포트 전체 복사</button>''',
-            unsafe_allow_html=True)
+        _copy_button()
 
         # ── 리포트 본문 ──
         st.markdown(f'<div class="llm-report">{report_text}</div>',
                     unsafe_allow_html=True)
 
         # ── 하단 복사 버튼 ──
-        st.markdown(
-            f'''<button id="{btn_id_bot}" onclick='navigator.clipboard.writeText({safe_js}).then(()=>{{
-                this.innerText="✓ 복사 완료!";this.style.background="#2e7d32";
-                setTimeout(()=>{{this.innerText="📋 리포트 전체 복사";this.style.background="#8b1a1a";}},2000);
-            }})' style="width:100%;padding:.7rem;background:#8b1a1a;color:#fff;border:none;
-            border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:.6rem">
-            📋 리포트 전체 복사</button>''',
-            unsafe_allow_html=True)
+        _copy_button()
 
         st.caption("✦ 캐시된 리포트 · 🗑 버튼으로 초기화 후 재생성 가능")
     elif gen_btn:
