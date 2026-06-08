@@ -331,21 +331,21 @@ button[data-testid="stBaseButton-primary"]:hover{
   box-shadow:0 6px 24px rgba(241,196,15,.5) !important;
   transform:translateY(-2px) !important;
 }
-/* AI 섹션의 삭제하기 버튼(secondary) — 생성 버튼과 높이 맞춤 */
+/* AI 섹션의 삭제하기 버튼(secondary) — 회색 계열 (빨강과 구분) */
 .ai-section button[kind="secondary"],
 .ai-section div[data-testid="stButton"] button:not([kind="primary"]){
-  background:#fff !important;
-  color:#8b1a1a !important;
-  border:2px solid #c0392b !important;
-  border-radius:12px !important;
-  font-size:1.05rem !important;
+  background:#6c757d !important;
+  color:#ffffff !important;
+  border:2px solid #5a6268 !important;
+  border-radius:10px !important;
+  font-size:1.0rem !important;
   font-weight:700 !important;
-  min-height:64px !important;
-  padding:1rem !important;
+  min-height:46px !important;
+  padding:.7rem !important;
 }
 .ai-section button[kind="secondary"]:hover{
-  background:#fbe9e7 !important;
-  border-color:#8b1a1a !important;
+  background:#5a6268 !important;
+  border-color:#495057 !important;
 }
 
 .divider{border:none;border-top:1px solid #e8e8e8;margin:1.2rem 0;}
@@ -2167,74 +2167,108 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
         extra += f"\n[귀인] {', '.join(active_g)} 활성"
 
     has_cache = cache_key in st.session_state
+
     if not has_cache:
-        # 리포트 없을 때: 생성 버튼만 꽉 차게
+        # ── 리포트 없을 때: 생성 버튼만 크게 ──
         gen_btn = st.button("✦  AI 종합 리포트 생성하기", key=f"gen_{cache_key}",
                             use_container_width=True, type="primary")
     else:
-        # 리포트 있을 때: 다시 생성 + 삭제 버튼 나란히 (같은 높이)
+        # ── 리포트 있을 때: 왼쪽 큰 생성 / 오른쪽 삭제+복사 ──
         gen_btn = False
-        c_re, c_del = st.columns(2)
-        with c_re:
-            if st.button("🔄  새로 다시 생성하기", key=f"gen_{cache_key}",
+        report_text = st.session_state[cache_key]
+        import json as _json
+        import streamlit.components.v1 as _components
+        safe_js = _json.dumps(report_text)
+
+        col_L, col_R = st.columns([1, 1])
+
+        # 왼쪽: 큰 "다시 생성" 버튼
+        with col_L:
+            if st.button("🔄  새로 다시\n생성하기", key=f"gen_{cache_key}",
                          use_container_width=True, type="primary"):
                 st.session_state.pop(cache_key, None)
                 st.rerun()
-        with c_del:
+
+        # 오른쪽: 삭제(위) + 복사(아래)
+        with col_R:
             if st.button("🗑  리포트 삭제하기", key=f"clr_{cache_key}",
                          use_container_width=True):
                 st.session_state.pop(cache_key, None)
                 st.rerun()
-
-    if cache_key in st.session_state:
-        report_text = st.session_state[cache_key]
-        import json as _json
-        import streamlit.components.v1 as _components
-
-        safe_js = _json.dumps(report_text)  # JS 안전 문자열
-
-        def _copy_button():
-            html = """<html><head><meta charset="utf-8"></head>
+            # 복사 버튼 (iframe, 파란 계열)
+            copy_html = """<html><head><meta charset="utf-8"></head>
 <body style="margin:0">
-<button id="cpbtn" style="width:100%;padding:.85rem;background:#8b1a1a;
-  color:#fff;border:none;border-radius:8px;font-size:1.05rem;font-weight:700;
-  cursor:pointer;font-family:sans-serif">📋 리포트 전체 복사</button>
+<button id="cpbtn" style="width:100%;padding:.7rem;background:#1565c0;
+  color:#fff;border:none;border-radius:10px;font-size:1.02rem;font-weight:700;
+  cursor:pointer;font-family:sans-serif;height:46px">📋 리포트 전체 복사</button>
 <script>
 var REPORT = __TEXT__;
 var btn = document.getElementById("cpbtn");
 btn.addEventListener("click", function(){
-  navigator.clipboard.writeText(REPORT).then(function(){
+  function done(){
     btn.innerText = "✓ 복사 완료!";
     btn.style.background = "#2e7d32";
     setTimeout(function(){
       btn.innerText = "📋 리포트 전체 복사";
-      btn.style.background = "#8b1a1a";
+      btn.style.background = "#1565c0";
     }, 2000);
-  }).catch(function(){
-    btn.innerText = "복사 실패 - 길게 눌러 직접 복사하세요";
-  });
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(REPORT).then(done).catch(fallback);
+  } else { fallback(); }
+  function fallback(){
+    var ta = document.createElement("textarea");
+    ta.value = REPORT; document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); }
+    catch(e){ btn.innerText = "복사 실패"; }
+    document.body.removeChild(ta);
+  }
 });
 </script>
 </body></html>""".replace("__TEXT__", safe_js)
-            _components.html(html, height=58)
+            _components.html(copy_html, height=52)
 
-        # ── 상단 복사 버튼 ──
-        _copy_button()
-
+    if has_cache:
+        report_text = st.session_state[cache_key]
         # ── 리포트 본문 ──
         st.markdown(f'<div class="llm-report">{report_text}</div>',
                     unsafe_allow_html=True)
 
-        # ── 하단 복사 버튼 ──
-        _copy_button()
+        # ── 하단 복사 버튼 (본문 아래, 파란 계열) ──
+        import json as _json2
+        import streamlit.components.v1 as _components2
+        safe_js2 = _json2.dumps(report_text)
+        bottom_html = """<html><head><meta charset="utf-8"></head>
+<body style="margin:0">
+<button id="cpbot" style="width:100%;padding:.85rem;background:#1565c0;
+  color:#fff;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;
+  cursor:pointer;font-family:sans-serif">📋 리포트 전체 복사</button>
+<script>
+var R = __TEXT__;
+var b = document.getElementById("cpbot");
+b.addEventListener("click", function(){
+  function ok(){ b.innerText="✓ 복사 완료!"; b.style.background="#2e7d32";
+    setTimeout(function(){ b.innerText="📋 리포트 전체 복사"; b.style.background="#1565c0"; },2000); }
+  function fb(){ var t=document.createElement("textarea"); t.value=R;
+    document.body.appendChild(t); t.select();
+    try{ document.execCommand("copy"); ok(); }catch(e){ b.innerText="복사 실패"; }
+    document.body.removeChild(t); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(R).then(ok).catch(fb);
+  } else { fb(); }
+});
+</script>
+</body></html>""".replace("__TEXT__", safe_js2)
+        _components2.html(bottom_html, height=58)
 
-        st.caption("✦ 캐시된 리포트 · 🗑 버튼으로 초기화 후 재생성 가능")
+        st.caption("✦ 캐시된 리포트 · 🗑 버튼으로 삭제 후 재생성 가능")
     elif gen_btn:
         try:
             streamed = st.write_stream(generate_llm_report(r, extra))
             result_text = streamed if isinstance(streamed, str) else str(streamed)
             st.session_state[cache_key] = result_text
-            st.success("✦ 리포트 생성 완료! 새로고침하면 복사 버튼이 나타납니다.")
+            st.success("✦ 리포트 생성 완료!")
             st.rerun()
         except Exception as e:
             err = str(e)
