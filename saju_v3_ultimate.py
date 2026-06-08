@@ -2243,9 +2243,33 @@ def render_택일_calendar(ilgin_list: list, ilgan: str, year: int, month: int):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
+def _copy_iframe(text: str, label: str, height: int = 50):
+    """클립보드 복사 버튼 (iframe 격리)"""
+    import json as _j
+    import streamlit.components.v1 as _c
+    safe = _j.dumps(text)
+    html = ('<html><head><meta charset="utf-8"></head><body style="margin:0;padding:0">'
+            '<button id="cpb" style="width:100%;padding:.7rem;background:#1565c0;'
+            'color:#fff;border:none;border-radius:8px;font-size:1.0rem;font-weight:700;'
+            'cursor:pointer;font-family:sans-serif;height:' + str(height-8) + 'px">'
+            + label + '</button><script>'
+            'var T=__TEXT__;var b=document.getElementById("cpb");'
+            'b.addEventListener("click",function(){'
+            'function ok(){b.innerText="\u2713 \ubcf5\uc0ac \uc644\ub8cc!";'
+            'b.style.background="#2e7d32";setTimeout(function(){b.innerText=L;'
+            'b.style.background="#1565c0";},2000);}'
+            'function fb(){var t=document.createElement("textarea");t.value=T;'
+            'document.body.appendChild(t);t.select();'
+            'try{document.execCommand("copy");ok();}catch(e){b.innerText="\ubcf5\uc0ac \uc2e4\ud328";}'
+            'document.body.removeChild(t);}'
+            'if(navigator.clipboard&&navigator.clipboard.writeText){'
+            'navigator.clipboard.writeText(T).then(ok).catch(fb);}else{fb();}'
+            '});var L=b.innerText;</script></body></html>').replace("__TEXT__", safe)
+    _c.html(html, height=height)
+
+
 def render_ai_report_section(r: dict, extra_text: str = ""):
-    """AI 명리 리포트 — 독립 섹션 (탭 외부)"""
-    st.markdown('<div class="ai-section">', unsafe_allow_html=True)
+    """AI 명리 리포트 + 역술 상담 채팅 — 독립 섹션"""
     st.markdown(
         f'<div class="ai-header-block">'
         f'<div class="ai-header-title">🔮 AI 명리 종합 해석 리포트</div>'
@@ -2259,7 +2283,6 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
     if not api_ok:
         st.warning("🔒 사이드바 하단에 Gemini API 키를 입력하면 활성화됩니다.\n\n"
                    "키 발급: https://aistudio.google.com → Get API Key (무료)")
-        st.markdown('</div>', unsafe_allow_html=True)
         return
 
     # 활성 귀인/삼재 자동 첨부
@@ -2272,201 +2295,118 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
 
     has_cache = cache_key in st.session_state
 
+    # ════════════ 리포트 없을 때: 생성 버튼 ════════════
     if not has_cache:
-        # ── 리포트 없을 때: 생성 버튼만 크게 ──
-        gen_btn = st.button("✦  AI 종합 리포트 생성하기", key=f"gen_{cache_key}",
-                            use_container_width=True, type="primary")
-    else:
-        # ── 리포트 있을 때: 왼쪽 큰 생성 / 오른쪽 삭제+복사 ──
-        gen_btn = False
-        report_text = st.session_state[cache_key]
-        import json as _json
-        import streamlit.components.v1 as _components
-        safe_js = _json.dumps(report_text)
+        if st.button("✦  AI 종합 리포트 생성하기", key=f"gen_{cache_key}",
+                     use_container_width=True, type="primary"):
+            try:
+                with st.spinner("🔮 AI가 12개 영역을 심층 분석 중입니다... (20~40초)"):
+                    parts = []
+                    for chunk in generate_llm_report(r, extra):
+                        parts.append(chunk)
+                    result_text = "".join(parts)
+                if result_text and len(result_text) > 50:
+                    st.session_state[cache_key] = result_text
+                    st.rerun()
+                else:
+                    st.error("리포트가 너무 짧게 생성됐습니다. 다시 시도해 주세요.")
+            except Exception as ex:
+                err = str(ex)
+                if "429" in err:
+                    st.error("⚠️ API 한도 초과 (429) — 1~2분 후 재시도하거나 "
+                             "gemini-2.5-flash-lite 로 변경하세요.")
+                else:
+                    st.error(f"오류: {err[:200]}")
+        return
 
-        col_L, col_R = st.columns([1.6, 1])
+    # ════════════ 리포트 있을 때 ════════════
+    report_text = st.session_state[cache_key]
 
-        # 왼쪽: 큰 "다시 생성" 버튼
-        with col_L:
-            if st.button("🔄  새로 다시\n생성하기", key=f"gen_{cache_key}",
-                         use_container_width=True, type="primary"):
+    # 상단: 다시생성 / 삭제 / 복사
+    col_L, col_R = st.columns([1.6, 1])
+    with col_L:
+        if st.button("🔄  새로 다시 생성하기", key=f"regen_{cache_key}",
+                     use_container_width=True, type="primary"):
+            st.session_state.pop(cache_key, None)
+            st.rerun()
+    with col_R:
+        with st.container(key=f"del_report_{abs(hash(cache_key))%10000}"):
+            if st.button("🗑  리포트 삭제하기", key=f"clr_{cache_key}",
+                         use_container_width=True):
                 st.session_state.pop(cache_key, None)
                 st.rerun()
+        _copy_iframe(report_text, "📋 리포트 전체 복사", height=46)
 
-        # 오른쪽: 삭제(위) + 복사(아래) — 간격 최소화
-        with col_R:
-            with st.container(key=f"del_report_{abs(hash(cache_key))%10000}"):
-                if st.button("🗑  리포트 삭제하기", key=f"clr_{cache_key}",
-                             use_container_width=True):
-                    st.session_state.pop(cache_key, None)
-                    st.rerun()
-            # 복사 버튼 (iframe, 파란 계열) — 위 버튼과 거의 붙게
-            copy_html = """<html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0">
-<button id="cpbtn" style="width:100%;padding:.62rem;background:#1565c0;
-  color:#fff;border:none;border-radius:8px;font-size:1.0rem;font-weight:700;
-  cursor:pointer;font-family:sans-serif;height:42px">📋 리포트 전체 복사</button>
-<script>
-var REPORT = __TEXT__;
-var btn = document.getElementById("cpbtn");
-btn.addEventListener("click", function(){
-  function done(){
-    btn.innerText = "✓ 복사 완료!";
-    btn.style.background = "#2e7d32";
-    setTimeout(function(){
-      btn.innerText = "📋 리포트 전체 복사";
-      btn.style.background = "#1565c0";
-    }, 2000);
-  }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(REPORT).then(done).catch(fallback);
-  } else { fallback(); }
-  function fallback(){
-    var ta = document.createElement("textarea");
-    ta.value = REPORT; document.body.appendChild(ta);
-    ta.select();
-    try { document.execCommand("copy"); done(); }
-    catch(e){ btn.innerText = "복사 실패"; }
-    document.body.removeChild(ta);
-  }
-});
-</script>
-</body></html>""".replace("__TEXT__", safe_js)
-            _components.html(copy_html, height=46)
+    # 본문
+    st.markdown(f'<div class="llm-report">{report_text}</div>',
+                unsafe_allow_html=True)
 
-    if has_cache:
-        report_text = st.session_state[cache_key]
-        # ── 리포트 본문 ──
-        st.markdown(f'<div class="llm-report">{report_text}</div>',
-                    unsafe_allow_html=True)
+    # ════════════ 💬 역술 상담실 (본문과 전체복사 사이) ════════════
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="chat-header">💬 AI 역술 상담실</div>'
+        '<div class="chat-sub">사주에 대해 궁금한 점을 자유롭게 물어보세요 '
+        '(예: 올해 이직해도 될까요? / 저랑 잘 맞는 배우자는? / 건강 조심할 점은?)</div>',
+        unsafe_allow_html=True)
 
-        # ── 하단 복사 버튼 (본문 아래, 파란 계열) ──
-        import json as _json2
-        import streamlit.components.v1 as _components2
-        safe_js2 = _json2.dumps(report_text)
-        bottom_html = """<html><head><meta charset="utf-8"></head>
-<body style="margin:0">
-<button id="cpbot" style="width:100%;padding:.85rem;background:#1565c0;
-  color:#fff;border:none;border-radius:10px;font-size:1.05rem;font-weight:700;
-  cursor:pointer;font-family:sans-serif">📋 리포트 전체 복사</button>
-<script>
-var R = __TEXT__;
-var b = document.getElementById("cpbot");
-b.addEventListener("click", function(){
-  function ok(){ b.innerText="✓ 복사 완료!"; b.style.background="#2e7d32";
-    setTimeout(function(){ b.innerText="📋 리포트 전체 복사"; b.style.background="#1565c0"; },2000); }
-  function fb(){ var t=document.createElement("textarea"); t.value=R;
-    document.body.appendChild(t); t.select();
-    try{ document.execCommand("copy"); ok(); }catch(e){ b.innerText="복사 실패"; }
-    document.body.removeChild(t); }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(R).then(ok).catch(fb);
-  } else { fb(); }
-});
-</script>
-</body></html>""".replace("__TEXT__", safe_js2)
-        _components2.html(bottom_html, height=58)
+    chat_key = f"chat_{r['meta']['name']}_{r['meta']['birth']}"
+    if chat_key not in st.session_state:
+        st.session_state[chat_key] = []
 
-        st.caption("✦ 캐시된 리포트 · 🗑 버튼으로 삭제 후 재생성 가능")
+    # 대화 내역 (카톡 스타일)
+    chat_html = '<div class="chat-box">'
+    if not st.session_state[chat_key]:
+        chat_html += ('<div class="chat-empty">아직 대화가 없습니다.<br>'
+                      '아래 입력창에 질문을 적어보세요 🔮</div>')
+    for turn in st.session_state[chat_key]:
+        safe_c = turn["content"].replace("<","&lt;").replace(">","&gt;")
+        if turn["role"] == "user":
+            chat_html += (f'<div class="chat-row right">'
+                          f'<div class="bubble user">{safe_c}</div></div>')
+        else:
+            chat_html += (f'<div class="chat-row left">'
+                          f'<div class="bubble ai">{safe_c}</div></div>')
+    chat_html += '</div>'
+    st.markdown(chat_html, unsafe_allow_html=True)
 
-        # ════════════════════════════════════════════
-        # 💬 AI 역술 상담 채팅창
-        # ════════════════════════════════════════════
-        st.markdown('<hr class="divider">', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="chat-header">💬 AI 역술 상담실</div>'
-            '<div class="chat-sub">사주에 대해 궁금한 점을 자유롭게 물어보세요 '
-            '(예: 올해 이직해도 될까요? / 저랑 잘 맞는 사람은? / 건강 조심할 건?)</div>',
-            unsafe_allow_html=True)
+    # 입력창 (text_input + 전송 버튼 — 어디서든 안정 작동)
+    ci1, ci2 = st.columns([5, 1])
+    with ci1:
+        user_q = st.text_input("질문 입력", key=f"input_{chat_key}",
+                               placeholder="궁금한 점을 입력하고 전송을 누르세요...",
+                               label_visibility="collapsed")
+    with ci2:
+        send = st.button("전송", key=f"send_{chat_key}",
+                         use_container_width=True, type="primary")
 
-        chat_key = f"chat_{r['meta']['name']}_{r['meta']['birth']}"
-        if chat_key not in st.session_state:
-            st.session_state[chat_key] = []
+    if send and user_q.strip():
+        st.session_state[chat_key].append({"role":"user","content":user_q.strip()})
+        with st.spinner("🔮 역술가가 답변 중..."):
+            answer = chat_with_saju(r, st.session_state[chat_key][:-1], user_q.strip())
+        st.session_state[chat_key].append({"role":"assistant","content":answer})
+        st.rerun()
 
-        # 대화 내역 표시 (카톡 스타일)
-        chat_html = '<div class="chat-box">'
-        if not st.session_state[chat_key]:
-            chat_html += ('<div class="chat-empty">아직 대화가 없습니다.<br>'
-                          '아래에 질문을 입력해 보세요 🔮</div>')
+    # 대화 지우기
+    if st.session_state[chat_key]:
+        with st.container(key=f"clrchat_{abs(hash(chat_key))%10000}"):
+            if st.button("🗑  대화 내용 지우기", key=f"clrc_{chat_key}",
+                         use_container_width=True):
+                st.session_state[chat_key] = []
+                st.rerun()
+
+    # ════════════ 하단: 전체 복사 (리포트 + 대화) ════════════
+    st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    full_copy = report_text
+    if st.session_state[chat_key]:
+        full_copy += "\n\n━━━ 💬 상담 대화 ━━━\n"
         for turn in st.session_state[chat_key]:
-            if turn["role"] == "user":
-                chat_html += (f'<div class="chat-row right">'
-                              f'<div class="bubble user">{turn["content"]}</div></div>')
-            else:
-                chat_html += (f'<div class="chat-row left">'
-                              f'<div class="bubble ai">{turn["content"]}</div></div>')
-        chat_html += '</div>'
-        st.markdown(chat_html, unsafe_allow_html=True)
+            who = "❓ 질문" if turn["role"]=="user" else "🔮 답변"
+            full_copy += f"\n[{who}] {turn['content']}\n"
+        _copy_iframe(full_copy, "📋 리포트 + 대화 전체 복사", height=52)
+    else:
+        _copy_iframe(report_text, "📋 리포트 전체 복사", height=52)
 
-        # 입력창
-        user_q = st.chat_input("질문을 입력하세요...", key=f"input_{chat_key}")
-        if user_q:
-            st.session_state[chat_key].append({"role": "user", "content": user_q})
-            with st.spinner("역술가가 답변 중..."):
-                answer = chat_with_saju(r, st.session_state[chat_key][:-1], user_q)
-            st.session_state[chat_key].append({"role": "assistant", "content": answer})
-            st.rerun()
-
-        # 채팅 초기화 + 전체 복사(리포트+채팅)
-        if st.session_state[chat_key]:
-            cc1, cc2 = st.columns([1, 1])
-            with cc1:
-                with st.container(key=f"clrchat_{abs(hash(chat_key))%10000}"):
-                    if st.button("🗑  대화 내용 지우기", key=f"clrc_{chat_key}",
-                                 use_container_width=True):
-                        st.session_state[chat_key] = []
-                        st.rerun()
-            with cc2:
-                # 리포트 + 채팅 합쳐서 복사
-                chat_text = "\n\n━━━ 💬 상담 대화 ━━━\n"
-                for turn in st.session_state[chat_key]:
-                    who = "❓ 질문" if turn["role"] == "user" else "🔮 답변"
-                    chat_text += f"\n[{who}] {turn['content']}\n"
-                full_copy = report_text + chat_text
-                import json as _json3
-                import streamlit.components.v1 as _components3
-                safe_full = _json3.dumps(full_copy)
-                allcopy_html = """<html><head><meta charset="utf-8"></head>
-<body style="margin:0">
-<button id="cpall" style="width:100%;padding:.7rem;background:#1565c0;
-  color:#fff;border:none;border-radius:8px;font-size:1.0rem;font-weight:700;
-  cursor:pointer;font-family:sans-serif;height:46px">📋 리포트+대화 전체 복사</button>
-<script>
-var A = __TEXT__;
-var x = document.getElementById("cpall");
-x.addEventListener("click", function(){
-  function ok(){ x.innerText="✓ 복사 완료!"; x.style.background="#2e7d32";
-    setTimeout(function(){ x.innerText="📋 리포트+대화 전체 복사"; x.style.background="#1565c0"; },2000); }
-  function fb(){ var t=document.createElement("textarea"); t.value=A;
-    document.body.appendChild(t); t.select();
-    try{ document.execCommand("copy"); ok(); }catch(e){ x.innerText="복사 실패"; }
-    document.body.removeChild(t); }
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(A).then(ok).catch(fb);
-  } else { fb(); }
-});
-</script>
-</body></html>""".replace("__TEXT__", safe_full)
-                _components3.html(allcopy_html, height=50)
-
-    elif gen_btn:
-        try:
-            streamed = st.write_stream(generate_llm_report(r, extra))
-            result_text = streamed if isinstance(streamed, str) else str(streamed)
-            st.session_state[cache_key] = result_text
-            st.success("✦ 리포트 생성 완료!")
-            st.rerun()
-        except Exception as e:
-            err = str(e)
-            if "429" in err:
-                st.error(
-                    "⚠️ API 한도 초과 (429)\n\n"
-                    "1. 1~2분 후 재시도\n"
-                    "2. 모델을 gemini-2.5-flash-lite 로 변경")
-            else:
-                st.error(f"오류: {e}")
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.caption("✦ 캐시된 리포트 · 🗑 버튼으로 삭제 후 재생성 가능")
 
 
 def render_15tabs(r: dict, suri: dict, birth_year: int,
