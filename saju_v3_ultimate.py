@@ -314,7 +314,7 @@ div[data-testid="stButton"] button[kind="primary"]{
   font-weight:800 !important;
   letter-spacing:.04em !important;
   padding:1.3rem 1rem !important;
-  min-height:64px !important;
+  min-height:98px !important;
   box-shadow:0 4px 16px rgba(192,57,43,.4) !important;
   transition:all .2s !important;
 }
@@ -332,13 +332,12 @@ button[data-testid="stBaseButton-primary"]:hover{
   transform:translateY(-2px) !important;
 }
 /* 삭제 버튼 — key 클래스(st-key-del_report) 기반 회색 + 흰글씨 */
-[class*="st-key-del_report"] button,
 [class*="st-key-del_report"] button{
   background:#6c757d !important;
   color:#ffffff !important;
   border:none !important;
   border-radius:8px !important;
-  font-size:1.0rem !important;
+  font-size:1.05rem !important;
   font-weight:700 !important;
   min-height:42px !important;
   padding:.62rem !important;
