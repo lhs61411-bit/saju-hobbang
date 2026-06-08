@@ -1825,104 +1825,55 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
     if extra:
         core += f"\n[추가 정보]\n{extra}"
 
-    prompt = f"""당신은 50년 경력의 명리학 대가이자, 사람의 마음을 따뜻하게 어루만지는 인생 상담가입니다.
-한 사람의 사주를 마치 한 편의 이야기처럼 깊이 있고 생생하게 풀어내는 능력으로 유명합니다.
-아래 사주 데이터를 바탕으로, 받는 사람이 "내 인생을 정확히 꿰뚫어 봤다"고 감탄할 만큼
-입체적이고 풍부하며 재미있는 종합 해석 리포트를 작성해 주세요.
+    prompt = f"""당신은 50년 경력의 따뜻한 명리학 상담가입니다.
+아래 사주 데이터로 12개 영역을 모두 분석하는 종합 리포트를 작성하세요.
 
-═══════════════════════════════════
 {core}
-═══════════════════════════════════
 
-【매우 중요한 작성 지침】
-1. 아래 12개 영역을 빠짐없이, 각 영역마다 깊이 있게 작성하세요.
-2. 영역끼리 내용이 겹치거나 같은 말을 반복하지 마세요. 각 영역은 고유한 관점으로 새로운 통찰을 제시해야 합니다.
-3. 추상적인 일반론("성실합니다", "노력하면 됩니다")을 금지합니다. 이 사람만의 구체적 특징을 사주 글자에 근거해 짚어주세요.
-4. 사주 데이터(천간·지지·십성·신살·대운)를 실제로 인용하며 "왜 그런지" 근거를 보여주세요.
-5. 재미있는 비유, 구체적 상황 예시, 실생활 조언을 풍부하게 넣어 읽는 재미를 더하세요.
-6. 명리 용어는 반드시 괄호로 쉽게 풀이하세요. 예: "식신(食神, 베풀고 표현하는 재능의 기운)"
+다음 12개 영역을 빠짐없이 작성하세요. 각 영역은 핵심만 간결하게(2~3문장),
+명리 용어는 괄호로 풀이하고, 사주에 근거해 구체적으로 쓰세요. 반복 금지.
 
-═══════════════════════════════════
-## 📜 1. 타고난 본질 — 당신은 어떤 사람인가
-일간({r["ilgan"]["stem"]}, {r["ilgan"]["ohaeng"]})의 본질을 자연물에 비유해 생생하게 묘사하세요(예: 갑목은 큰 나무, 계수는 이슬비). 일지({r["pillars"]["day"]["branch"]})가 보여주는 속마음과 겉모습의 차이. 십이운성({r["ilgan"]["twelve_fortune"]})이 말하는 에너지 상태. 어린 시절부터 형성된 기질, 남들이 보는 나 vs 진짜 나. 강점 3가지와 약점 2가지를 구체적으로. (350자)
+## 📜 1. 타고난 본질
+일간({r["ilgan"]["stem"]}, {r["ilgan"]["ohaeng"]})의 성격, 강점·약점, 일지({r["pillars"]["day"]["branch"]})가 보여주는 속마음.
 
-## ⚖️ 2. 오행의 균형 — 내 안의 다섯 기운
-목·화·토·금·수 다섯 기운의 분포를 분석하고, 과한 기운과 부족한 기운이 성격·건강·인간관계에 어떻게 드러나는지 구체적으로. 부족한 기운을 채우는 실천법(음식·색·취미·환경)을 실용적으로 제안. (350자)
+## ⚖️ 2. 오행의 균형
+과한 기운과 부족한 기운, 그것이 성격·건강에 미치는 영향과 보완법.
 
-## 🏛️ 3. 격국 — 내 인생의 무대와 役할
-{r["yukguk"]}의 의미를 쉽게 풀이하고, 이 사람이 어떤 무대에서 가장 빛나는지, 어떤 방식으로 세상과 관계 맺는지 설명. 이 격국을 가진 인물 유형의 예시를 들어 흥미롭게. (350자)
+## 🏛️ 3. 격국
+{r["yukguk"]}의 의미와 이 사람이 빛나는 무대.
 
-## 🔑 4. 용신 — 인생을 여는 황금 열쇠
-용신({r["yongshin"].get("용신","")})이 왜 이 사람에게 가장 필요한 기운인지 쉽게 설명. 이 기운을 강화하는 직업·환경·습관·인테리어·인간관계를 아주 구체적으로. 기신({r["yongshin"].get("기신","")})은 무엇이고 어떻게 피할지도. (350자)
+## 🔑 4. 용신
+용신({r["yongshin"].get("용신","")})이 필요한 이유와 강화법, 기신({r["yongshin"].get("기신","")}) 주의점.
 
-## 💰 5. 재물과 경제 — 돈의 흐름
-재성(財星) 구조를 분석해 평생의 재물 그릇과 흐름을 설명. 사업형 vs 직장형 중 어느 쪽이 맞는지, 투자 성향(공격적/안정적), 큰돈이 들어오는 시기와 조심할 시기, 어떤 분야·방식으로 돈이 들어오는지. 돈 관리 실전 조언. (400자)
+## 💰 5. 재물운
+재물 그릇과 흐름, 사업형/직장형, 돈 들어오는 시기와 분야.
 
-## 💼 6. 직업과 성취 — 일에서의 나
-관성(官星, 조직·명예)과 식상(食傷, 재능·표현)의 균형을 분석. 가장 잘 맞는 직군 TOP 3와 이유, 조직 생활 vs 프리랜서·창업 적합도, 30·40·50대 커리어 흐름과 승진 시기, 직장 내 인간관계. (400자)
+## 💼 6. 직업운
+잘 맞는 직군, 조직/창업 적합도, 커리어 흐름과 승진 시기.
 
-## ❤️ 7. 사랑과 인연 — 마음의 운명
-배우자궁인 일지({r["pillars"]["day"]["branch"]}) 해석으로 어떤 배우자·연인과 인연이 깊은지(성격·외모·분위기). 연애 스타일, 결혼 적령기, 결혼 후 관계 모습. {"배우자궁에 충(沖)이 있어 관계의 부침이나 늦은 결혼 가능성. 이를 지혜롭게 다루는 법도 조언. " if spouse_warn else ""}좋은 인연을 만나고 지키는 실전 조언. (400자)
+## ❤️ 7. 사랑·결혼운
+배우자궁({r["pillars"]["day"]["branch"]})으로 본 인연, 결혼 시기. {"(배우자궁 충 주의)" if spouse_warn else ""}
 
-## 🏥 8. 건강 — 몸이 보내는 신호
-오행 부족({r["career_health"]["약한오행"]})과 과다로 인해 평생 주의할 신체 부위와 질환을 구체적으로. 현재 대운({cd['age']}~{cd['age']+9}세)에서 특히 신경 쓸 건강 포인트. 체질에 맞는 음식·운동·생활습관을 실용적으로. (350자)
+## 🏥 8. 건강운
+약한 오행({r["career_health"]["약한오행"]})으로 주의할 부위와 건강 조언.
 
-## 🌊 9. 현재 대운 — 지금 흐르는 10년의 강물
-현재 대운 {cd["stem"]}{cd["branch"]}({cd['age']}~{cd['age']+9}세)이 가져오는 기운과 분위기를 생생하게 묘사. 이 10년의 핵심 키워드 3개. 이 시기에 시작하면 좋은 것 / 정리하면 좋은 것 / 조심할 것. 인생 흐름에서 지금이 어떤 계절인지. (400자)
+## 🌊 9. 현재 대운
+대운 {cd["stem"]}{cd["branch"]}({cd['age']}~{cd['age']+9}세)의 기운과 핵심 키워드, 할 일.
 
-## 📅 10. {cur_year}년 올해 운세 — 열두 달의 지도
-올해 전체 운세의 큰 흐름과 분위기(상승/조정/도약/휴식 등). 가장 빛나는 달과 가장 조심할 달을 콕 집어서. 재물·일·연애·건강·이동/이사 각 분야별 올해 포인트. 현재 {cur_month}월부터 향후 6개월의 월별 흐름을 짚어주기. (450자)
+## 📅 10. {cur_year}년 올해 운세
+올해 전체 흐름, 좋은 달과 조심할 달, 분야별 포인트.
 
-## 🔮 11. 다가올 3년 — 미래를 미리 보기
-{cur_year+1}년과 {cur_year+2}년의 큰 흐름과 주요 사건 가능성(기회·변화·시련·만남). 지금부터 준비하면 좋은 것. 터닝포인트 시점. (350자)
+## 🔮 11. 다가올 3년
+{cur_year+1}~{cur_year+2}년 흐름과 준비할 것.
 
-## ⭐ 12. 종합 — 당신에게 보내는 편지
-지금까지의 분석을 따뜻하게 종합. 이 사주의 가장 빛나는 강점 한 가지를 격려와 함께. 평생 마음에 새기면 좋을 좌우명 같은 조언 한 문장. 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]})를 일상에서 활용하는 재미있는 팁. 마지막은 희망적이고 따뜻한 한마디로 마무리. (350자)
+## ⭐ 12. 종합 조언
+강점 한 가지, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
 
-═══════════════════════════════════
-
-【작성 원칙】
-- 따뜻하고 친근한 존댓말, 때로는 위트 있게
-- 각 영역 마크다운 헤더(## ...)를 그대로 사용
-- 사주 글자에 근거한 구체적 분석 (막연한 일반론 금지)
-- 영역 간 내용 중복 절대 금지 — 각 영역은 새로운 통찰
-- 미신적 단정("반드시 망한다" 등) 대신 가능성과 조언으로
-- 각 영역을 지정된 글자수에 맞춰 작성 (절대 초과하지 말 것)
-- 전체 분량 약 4,000자 — 12개 영역을 모두 완성하는 것이 가장 중요
-- 도중에 끊기면 안 되므로, 각 영역을 간결하고 핵심적으로 작성
-- 12개 영역을 반드시 다 쓰고 마지막 종합까지 완성할 것
-"""
-
+【필수】 반드시 12개 영역을 모두 완성하고 끝내세요. 각 영역 2~3문장으로 간결하게."""
     model = genai.GenerativeModel(model_name)
-    # gemini-2.5 계열은 추론(thinking) 모델 → thinking이 출력토큰을 소모해 답변이 잘림
-    # 해결: thinking 최소화 + 출력 토큰 대폭 확대
-    gen_config = None
+    gen_config = {"max_output_tokens": 8192, "temperature": 0.8}
     try:
-        # 신형 config (thinking 제어 지원 시)
-        gen_config = genai.types.GenerationConfig(
-            max_output_tokens=8192,
-            temperature=0.85,
-        )
-    except Exception:
-        gen_config = {"max_output_tokens": 8192, "temperature": 0.85}
-
-    # thinking_budget=0 으로 추론 토큰 소모 차단 (지원 모델에서만)
-    request_opts = {"generation_config": gen_config}
-    try:
-        from google.generativeai import types as _gtypes
-        if hasattr(_gtypes, "ThinkingConfig"):
-            gen_config = _gtypes.GenerationConfig(
-                max_output_tokens=8192,
-                temperature=0.85,
-                thinking_config=_gtypes.ThinkingConfig(thinking_budget=0),
-            )
-            request_opts = {"generation_config": gen_config}
-    except Exception:
-        pass
-
-    # 스트리밍 중 깨짐 방지 → 비스트리밍 1회 호출
-    try:
-        response = model.generate_content(prompt, **request_opts)
+        response = model.generate_content(prompt, generation_config=gen_config)
         text = ""
         try:
             text = response.text
@@ -1930,18 +1881,8 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
             if response.candidates:
                 parts = response.candidates[0].content.parts
                 text = "".join(getattr(p, "text", "") for p in parts)
-        # 토큰 한계로 잘렸는지 확인
-        truncated = False
-        try:
-            fr = str(response.candidates[0].finish_reason)
-            if fr in ("2", "FinishReason.MAX_TOKENS", "MAX_TOKENS"):
-                truncated = True
-        except Exception:
-            pass
         if not text:
             text = "리포트 생성에 실패했습니다. 다시 시도해 주세요."
-        elif truncated:
-            text += "\n\n_(분량이 길어 일부 생략되었습니다. 더 짧은 모델로 재시도하거나 다시 생성해 보세요.)_"
         yield text
     except Exception as e:
         yield f"\n\n[리포트 생성 오류] {str(e)[:200]}\n\n잠시 후 다시 시도하거나 모델을 변경해 주세요."
@@ -1995,16 +1936,8 @@ def chat_with_saju(saju_json: dict, history: list, user_msg: str):
     )
 
     try:
-        chat_cfg = {"max_output_tokens": 4096, "temperature": 0.9}
-        try:
-            from google.generativeai import types as _gt
-            if hasattr(_gt, "ThinkingConfig"):
-                chat_cfg = _gt.GenerationConfig(
-                    max_output_tokens=4096, temperature=0.9,
-                    thinking_config=_gt.ThinkingConfig(thinking_budget=0))
-        except Exception:
-            pass
-        resp = model.generate_content(prompt, generation_config=chat_cfg)
+        resp = model.generate_content(
+            prompt, generation_config={"max_output_tokens": 2048, "temperature": 0.9})
         try:
             return resp.text
         except Exception:
