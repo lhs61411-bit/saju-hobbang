@@ -197,14 +197,24 @@ html,body,[class*="css"]{
 .comp-화해{background:#fce4ec;color:#880e4f;border-color:#f48fb1;}
 
 /* ── AI 리포트 ── */
-.llm-report{
+.llm-report-box{
   background:#fffdf7;border:1px solid #e5dec8;border-left:5px solid #8b1a1a;
-  border-radius:10px;padding:1.8rem;font-size:1.12rem;line-height:1.95;
-  color:#1a1a1a;white-space:pre-wrap;box-shadow:0 2px 12px rgba(139,26,26,.08);
+  border-radius:10px;padding:1.8rem 2rem;margin:.5rem 0;
+  box-shadow:0 2px 12px rgba(139,26,26,.08);
 }
-.llm-report h2{font-size:1.4rem !important;color:#8b1a1a !important;
-  margin:1.3rem 0 .6rem !important;font-weight:700 !important;}
-.llm-report strong, .llm-report b{color:#8b1a1a;font-weight:700;}
+/* 리포트 본문 글씨 — 크게 */
+.llm-report-box p, .llm-report-box li{
+  font-size:1.15rem !important;line-height:2 !important;color:#1a1a1a !important;
+}
+/* 리포트 소제목 — 더 크게 */
+.llm-report-box h2{
+  font-size:1.55rem !important;color:#8b1a1a !important;
+  margin:1.6rem 0 .7rem !important;font-weight:700 !important;
+  border-bottom:2px solid #f0e0d0;padding-bottom:.3rem;
+}
+.llm-report-box h1{font-size:1.7rem !important;color:#8b1a1a !important;}
+.llm-report-box h3{font-size:1.3rem !important;color:#a93226 !important;font-weight:700 !important;}
+.llm-report-box strong, .llm-report-box b{color:#8b1a1a !important;font-weight:700 !important;}
 
 /* ── 귀인 배지 ── */
 .guiin-badge{display:inline-block;padding:.2rem .7rem;border-radius:4px;font-size:.78rem;margin:.18rem;font-weight:500;}
@@ -2327,8 +2337,10 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
         _copy_iframe(report_text, "📋 리포트 전체 복사", height=46)
 
     # 본문
-    st.markdown(f'<div class="llm-report">{report_text}</div>',
-                unsafe_allow_html=True)
+    # 리포트 본문 (마크다운 정상 렌더링 — ## 제목, ** 강조 자동 변환)
+    st.markdown('<div class="llm-report-box">', unsafe_allow_html=True)
+    st.markdown(report_text)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ════════════ 💬 역술 상담실 (본문과 전체복사 사이) ════════════
     st.markdown('<hr class="divider">', unsafe_allow_html=True)
