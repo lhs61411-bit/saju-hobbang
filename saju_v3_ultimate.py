@@ -1838,11 +1838,11 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
     if extra:
         core += f"\n[추가 정보]\n{extra}"
 
-    # 선택 영역(MBTI, 자미두수)을 동적으로 추가
+    # 선택 영역(MBTI는 선택, 자미두수는 자동 적용) — 종합 조언 '앞'에 배치
     mbti = r["meta"].get("mbti", "")
-    jami = r["meta"].get("jami", False)
+    jami = True  # 자미두수는 항상 자동 포함
     extra_sections = ""
-    next_num = 13  # 12번 종합 다음 번호
+    next_num = 12  # 11번 다음, 종합은 맨 뒤로 밀림
 
     if mbti:
         core += f"\n[MBTI]\n- {mbti}"
@@ -1870,9 +1870,10 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 ※ 자미두수는 유파별로 해석이 조금씩 달라 참고용임을 부드럽게 한 번 언급."""
         next_num += 1
 
-    total_areas = next_num - 1
+    final_num = next_num  # 종합 조언 번호 (선택 영역 다음)
+    total_areas = final_num
     if extra_sections:
-        final_instr = f"【필수】 {total_areas}개 영역을 모두 빠짐없이 쓰고 마지막 영역까지 완성하세요. 각 영역 약 300자로 풍부하게."
+        final_instr = f"【필수】 1번부터 {final_num}번 종합 조언까지 {total_areas}개 영역을 모두 빠짐없이 순서대로 쓰고 완성하세요. 특히 {12}~{final_num}번을 절대 빠뜨리지 마세요. 각 영역 약 300자."
     else:
         final_instr = "【필수】 12개 영역을 모두 빠짐없이 쓰고 12번 종합까지 완성하세요. 각 영역 약 300자로 풍부하게, 단 도중에 끊기지 않도록 균형있게 작성."
 
@@ -1920,10 +1921,10 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 
 ## 🔮 11. 다가올 3년
 {cur_year+1}~{cur_year+2}년의 큰 흐름과 기회·변화, 지금부터 준비할 것, 터닝포인트.
-
-## ⭐ 12. 종합 조언
-가장 빛나는 강점, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
 {extra_sections}
+
+## ⭐ {final_num}. 종합 조언
+가장 빛나는 강점, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
 
 {final_instr}"""
     model = genai.GenerativeModel(model_name)
@@ -2311,7 +2312,7 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
     st.markdown(
         f'<div class="ai-header-block">'
         f'<div class="ai-header-title">🔮 AI 명리 종합 해석 리포트</div>'
-        f'<div class="ai-header-sub">{r["meta"]["name"]}님의 사주를 AI가 {12 + (1 if r["meta"].get("mbti") else 0) + (1 if r["meta"].get("jami") else 0)}개 영역으로 입체 분석합니다</div>'
+        f'<div class="ai-header-sub">{r["meta"]["name"]}님의 사주를 AI가 {13 + (1 if r["meta"].get("mbti") else 0)}개 영역으로 입체 분석합니다</div>'
         f'</div>',
         unsafe_allow_html=True)
 
@@ -3400,8 +3401,6 @@ def main():
                               "ISTP","ISFP","ESTP","ESFP"],
                              key="mbti_" + str(sid),
                              help="입력 시 사주×MBTI 교차 분석이 리포트에 추가됩니다")
-                st.checkbox("🟣 자미두수 분석 추가 (선택)", key="jami_" + str(sid),
-                            help="체크 시 자미두수(紫微斗數) 관점의 12궁 해석이 리포트에 추가됩니다")
 
         if delete_sid is not None:
             st.session_state.slot_ids.remove(delete_sid)
@@ -3597,7 +3596,6 @@ def main():
                                       hanja_name=hanja)
                 mbti = st.session_state.get("mbti_" + str(sid), "모름")
                 r["meta"]["mbti"] = mbti if mbti != "모름" else ""
-                r["meta"]["jami"] = bool(st.session_state.get("jami_" + str(sid), False))
                 results.append(r)
                 birth_years.append(y)
 
@@ -3656,6 +3654,51 @@ def main():
             r["meta"]["name"] + '(' + r["ilgan"]["ohaeng"] + ')</span>'
             for r in results),
         unsafe_allow_html=True)
+
+    # ── 다인원 전체 복사 (궁합 + 모든 개인 리포트) ──
+    def _build_full_group_text():
+        lines = []
+        lines.append("═══════════════════════════════")
+        lines.append(f"  {n}명 종합 분석 리포트")
+        lines.append("═══════════════════════════════\n")
+        # 궁합 요약
+        if pairs:
+            lines.append("━━━ 💑 궁합 분석 ━━━\n")
+            names = [r["meta"]["name"] or f"인원{i+1}" for i, r in enumerate(results)]
+            for (i, j), gh in pairs.items():
+                lines.append(f"[{names[i]} ↔ {names[j]}] {gh['score']}점 · {gh['grade']}")
+                lines.append(f"  {gh.get('overall','')}")
+                if gh.get("일지관계"):
+                    lines.append(f"  · 일지관계: {gh['일지관계']}")
+                if gh.get("강점"):
+                    lines.append("  · 강점: " + " / ".join(s.replace("💎 ","") for s in gh["강점"]))
+                if gh.get("약점"):
+                    lines.append("  · 주의: " + " / ".join(w.replace("⚠ ","") for w in gh["약점"]))
+                lines.append("")
+        # 각 개인 AI 리포트 (생성된 것만)
+        lines.append("━━━ 📜 개인별 AI 리포트 ━━━\n")
+        any_report = False
+        for r in results:
+            ck = f"ai_report_{r['meta']['name']}_{r['meta']['birth']}"
+            if ck in st.session_state:
+                any_report = True
+                lines.append(f"\n【 {r['meta']['name']}님 】")
+                lines.append(st.session_state[ck])
+                # 채팅 대화도 포함
+                chk = f"chat_{r['meta']['name']}_{r['meta']['birth']}"
+                if st.session_state.get(chk):
+                    lines.append("\n  --- 상담 대화 ---")
+                    for t in st.session_state[chk]:
+                        who = "❓질문" if t["role"]=="user" else "🔮답변"
+                        lines.append(f"  [{who}] {t['content']}")
+                lines.append("\n" + "─"*30)
+        if not any_report:
+            lines.append("(아직 생성된 개인 리포트가 없습니다. 각 인원 탭에서 'AI 리포트 생성'을 먼저 눌러 주세요.)")
+        return "\n".join(lines)
+
+    full_group_text = _build_full_group_text()
+    _copy_iframe(full_group_text, "📋 전체 복사 (궁합 + 모든 개인 리포트)", height=52)
+    st.caption("※ 각 인원의 AI 리포트를 먼저 생성하면 복사 내용에 포함됩니다.")
 
     if opt_matrix:
         render_compat_matrix(results, pairs)
