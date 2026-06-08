@@ -1845,7 +1845,7 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 
 【작성 규칙】
 - 12개 영역을 빠짐없이 모두 작성하고 마지막까지 완성하세요 (이게 가장 중요)
-- 각 영역은 4~5문장, 약 200자 분량으로 알차게 작성
+- 각 영역은 5~6문장, 약 300자 분량으로 충실하고 풍부하게 작성
 - 명리 용어는 괄호로 쉽게 풀이 (예: 식신(食神, 표현·재능의 기운))
 - 사주 글자에 근거해 구체적으로, 영역 간 내용 반복 금지
 - 따뜻한 존댓말, 때때로 위트있게
@@ -1886,7 +1886,7 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 ## ⭐ 12. 종합 조언
 가장 빛나는 강점, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
 
-【필수】 12개 영역을 모두 빠짐없이 쓰고 12번 종합까지 완성하세요. 각 영역 약 200자."""
+【필수】 12개 영역을 모두 빠짐없이 쓰고 12번 종합까지 완성하세요. 각 영역 약 300자로 풍부하게, 단 도중에 끊기지 않도록 균형있게 작성."""
     model = genai.GenerativeModel(model_name)
     gen_config = {"max_output_tokens": 12000, "temperature": 0.8}
     try:
@@ -3304,9 +3304,19 @@ def main():
         st.session_state.slot_ids  = [1]
         st.session_state.next_sid  = 2
     if "api_key_loaded" not in st.session_state:
-        saved = load_api_key()
-        if saved:
-            st.session_state["gemini_api_key_input"] = saved
+        # 1순위: URL 쿼리 파라미터 (브라우저가 기억) → 2순위: 로컬 파일
+        loaded = ""
+        try:
+            qp = st.query_params.get("k", "")
+            if qp:
+                import base64 as _b64
+                loaded = _b64.b64decode(qp.encode()).decode()
+        except Exception:
+            loaded = ""
+        if not loaded:
+            loaded = load_api_key()
+        if loaded:
+            st.session_state["gemini_api_key_input"] = loaded
         st.session_state.api_key_loaded = True
 
     # ── SIDEBAR ──────────────────────────────────────────
@@ -3492,16 +3502,26 @@ def main():
         with c_sv:
             if st.button("💾 저장", use_container_width=True, disabled=not api_key_val):
                 save_api_key(api_key_val)
-                st.success("저장됨!")
+                # URL 파라미터에도 저장 (브라우저가 기억 → 재접속 시 자동 로드)
+                try:
+                    import base64 as _b64
+                    st.query_params["k"] = _b64.b64encode(api_key_val.encode()).decode()
+                except Exception:
+                    pass
+                st.success("저장됨! 이 페이지를 즐겨찾기하면 다음에도 키가 유지됩니다.")
         with c_dl:
             if st.button("🗑 삭제", use_container_width=True, disabled=not api_key_val):
                 save_api_key("")
                 st.session_state["gemini_api_key_input"] = ""
+                try:
+                    st.query_params.clear()
+                except Exception:
+                    pass
                 st.rerun()
         if api_key_val:
             st.success("✓ API 키 입력됨", icon="🔓")
         else:
-            st.caption("🔒 미입력 시 AI 리포트(탭 15)만 비활성화")
+            st.caption("🔒 미입력 시 AI 리포트만 비활성화")
 
     # ── 분석 실행 (버튼 클릭 시에만) ─────────────────────
     if analyze_btn:
