@@ -331,27 +331,29 @@ button[data-testid="stBaseButton-primary"]:hover{
   box-shadow:0 6px 24px rgba(241,196,15,.5) !important;
   transform:translateY(-2px) !important;
 }
-/* AI 섹션의 삭제하기 버튼(secondary) — 회색 계열 + 흰 글씨 강제 */
-.ai-section button[kind="secondary"],
-.ai-section div[data-testid="stButton"] button:not([kind="primary"]){
+/* 삭제 버튼 — key 클래스(st-key-del_report) 기반 회색 + 흰글씨 */
+[class*="st-key-del_report"] button,
+[class*="st-key-del_report"] button{
   background:#6c757d !important;
   color:#ffffff !important;
-  border:2px solid #5a6268 !important;
+  border:none !important;
   border-radius:8px !important;
   font-size:1.0rem !important;
   font-weight:700 !important;
   min-height:42px !important;
   padding:.62rem !important;
+  box-shadow:none !important;
 }
-.ai-section button[kind="secondary"] *,
-.ai-section button[kind="secondary"] p,
-.ai-section button[kind="secondary"] div,
-.ai-section button[kind="secondary"] span{
-  color:#ffffff !important;
-}
-.ai-section button[kind="secondary"]:hover{
-  background:#5a6268 !important;
-  border-color:#495057 !important;
+[class*="st-key-del_report"] button *,
+[class*="st-key-del_report"] button *{color:#ffffff !important;}
+[class*="st-key-del_report"] button:hover,
+[class*="st-key-del_report"] button:hover{background:#5a6268 !important;}
+/* 복사 버튼(iframe)을 위 버튼과 붙이기 */
+.ai-section iframe{margin-top:-14px !important;display:block !important;}
+.ai-section [data-testid="stIFrame"]{margin-top:-14px !important;}
+/* iframe 컨테이너 여백 제거 */
+.ai-section div[data-testid="element-container"]:has(iframe){
+  margin-top:-14px !important;margin-bottom:0 !important;
 }
 
 .divider{border:none;border-top:1px solid #e8e8e8;margin:1.2rem 0;}
@@ -2197,10 +2199,11 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
 
         # 오른쪽: 삭제(위) + 복사(아래) — 간격 최소화
         with col_R:
-            if st.button("🗑  리포트 삭제하기", key=f"clr_{cache_key}",
-                         use_container_width=True):
-                st.session_state.pop(cache_key, None)
-                st.rerun()
+            with st.container(key=f"del_report_{abs(hash(cache_key))%10000}"):
+                if st.button("🗑  리포트 삭제하기", key=f"clr_{cache_key}",
+                             use_container_width=True):
+                    st.session_state.pop(cache_key, None)
+                    st.rerun()
             # 복사 버튼 (iframe, 파란 계열) — 위 버튼과 거의 붙게
             copy_html = """<html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0">
