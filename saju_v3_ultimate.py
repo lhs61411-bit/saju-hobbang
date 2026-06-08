@@ -331,17 +331,23 @@ button[data-testid="stBaseButton-primary"]:hover{
   box-shadow:0 6px 24px rgba(241,196,15,.5) !important;
   transform:translateY(-2px) !important;
 }
-/* AI 섹션의 삭제하기 버튼(secondary) — 회색 계열 (빨강과 구분) */
+/* AI 섹션의 삭제하기 버튼(secondary) — 회색 계열 + 흰 글씨 강제 */
 .ai-section button[kind="secondary"],
 .ai-section div[data-testid="stButton"] button:not([kind="primary"]){
   background:#6c757d !important;
   color:#ffffff !important;
   border:2px solid #5a6268 !important;
-  border-radius:10px !important;
+  border-radius:8px !important;
   font-size:1.0rem !important;
   font-weight:700 !important;
-  min-height:46px !important;
-  padding:.7rem !important;
+  min-height:42px !important;
+  padding:.62rem !important;
+}
+.ai-section button[kind="secondary"] *,
+.ai-section button[kind="secondary"] p,
+.ai-section button[kind="secondary"] div,
+.ai-section button[kind="secondary"] span{
+  color:#ffffff !important;
 }
 .ai-section button[kind="secondary"]:hover{
   background:#5a6268 !important;
@@ -2180,7 +2186,7 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
         import streamlit.components.v1 as _components
         safe_js = _json.dumps(report_text)
 
-        col_L, col_R = st.columns([1, 1])
+        col_L, col_R = st.columns([1.6, 1])
 
         # 왼쪽: 큰 "다시 생성" 버튼
         with col_L:
@@ -2189,18 +2195,18 @@ def render_ai_report_section(r: dict, extra_text: str = ""):
                 st.session_state.pop(cache_key, None)
                 st.rerun()
 
-        # 오른쪽: 삭제(위) + 복사(아래)
+        # 오른쪽: 삭제(위) + 복사(아래) — 간격 최소화
         with col_R:
             if st.button("🗑  리포트 삭제하기", key=f"clr_{cache_key}",
                          use_container_width=True):
                 st.session_state.pop(cache_key, None)
                 st.rerun()
-            # 복사 버튼 (iframe, 파란 계열)
+            # 복사 버튼 (iframe, 파란 계열) — 위 버튼과 거의 붙게
             copy_html = """<html><head><meta charset="utf-8"></head>
-<body style="margin:0">
-<button id="cpbtn" style="width:100%;padding:.7rem;background:#1565c0;
-  color:#fff;border:none;border-radius:10px;font-size:1.02rem;font-weight:700;
-  cursor:pointer;font-family:sans-serif;height:46px">📋 리포트 전체 복사</button>
+<body style="margin:0;padding:0">
+<button id="cpbtn" style="width:100%;padding:.62rem;background:#1565c0;
+  color:#fff;border:none;border-radius:8px;font-size:1.0rem;font-weight:700;
+  cursor:pointer;font-family:sans-serif;height:42px">📋 리포트 전체 복사</button>
 <script>
 var REPORT = __TEXT__;
 var btn = document.getElementById("cpbtn");
@@ -2227,7 +2233,7 @@ btn.addEventListener("click", function(){
 });
 </script>
 </body></html>""".replace("__TEXT__", safe_js)
-            _components.html(copy_html, height=52)
+            _components.html(copy_html, height=46)
 
     if has_cache:
         report_text = st.session_state[cache_key]
