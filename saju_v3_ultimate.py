@@ -199,9 +199,12 @@ html,body,[class*="css"]{
 /* ── AI 리포트 ── */
 .llm-report{
   background:#fffdf7;border:1px solid #e5dec8;border-left:5px solid #8b1a1a;
-  border-radius:10px;padding:1.8rem;font-size:.97rem;line-height:2;
+  border-radius:10px;padding:1.8rem;font-size:1.12rem;line-height:1.95;
   color:#1a1a1a;white-space:pre-wrap;box-shadow:0 2px 12px rgba(139,26,26,.08);
 }
+.llm-report h2{font-size:1.4rem !important;color:#8b1a1a !important;
+  margin:1.3rem 0 .6rem !important;font-weight:700 !important;}
+.llm-report strong, .llm-report b{color:#8b1a1a;font-weight:700;}
 
 /* ── 귀인 배지 ── */
 .guiin-badge{display:inline-block;padding:.2rem .7rem;border-radius:4px;font-size:.78rem;margin:.18rem;font-weight:500;}
@@ -311,8 +314,8 @@ section[data-testid="stSidebar"] .stMarkdown{color:#1a1a1a !important;}
 .chat-row{display:flex;margin-bottom:.7rem;}
 .chat-row.right{justify-content:flex-end;}
 .chat-row.left{justify-content:flex-start;}
-.bubble{max-width:78%;padding:.7rem 1rem;border-radius:16px;font-size:.92rem;
-  line-height:1.6;word-break:break-word;white-space:pre-wrap;}
+.bubble{max-width:80%;padding:.8rem 1.1rem;border-radius:16px;font-size:1.05rem;
+  line-height:1.7;word-break:break-word;white-space:pre-wrap;}
 .bubble.user{background:#ffe44d;color:#1a1a1a;border-bottom-right-radius:4px;
   box-shadow:0 1px 3px rgba(0,0,0,.1);}
 .bubble.ai{background:#ffffff;color:#1a1a1a;border:1px solid #e0d5b8;
@@ -1938,7 +1941,7 @@ def chat_with_saju(saju_json: dict, history: list, user_msg: str):
     prompt = (
         "당신은 따뜻하고 지혜로운 50년 경력 역술 상담가입니다.\n"
         "아래 사주 정보를 바탕으로, 상담자의 질문에 친근하고 구체적으로 답하세요.\n"
-        "명리 용어는 괄호로 쉽게 풀이하고, 200~400자로 핵심을 짚되 따뜻하게 답하세요.\n"
+        "명리 용어는 괄호로 쉽게 풀이하고, 300자 내외로 핵심을 짚어 따뜻하게 답하세요. 답변은 반드시 완결된 문장으로 끝내세요.\n"
         "사주 근거를 들어 설명하고, 단정적 불운 예언 대신 조언과 가능성으로 답하세요.\n\n"
         f"{sysinfo}\n"
         f"\n[지금까지의 대화]{convo if convo else ' (없음)'}\n"
@@ -1947,7 +1950,7 @@ def chat_with_saju(saju_json: dict, history: list, user_msg: str):
 
     try:
         resp = model.generate_content(
-            prompt, generation_config={"max_output_tokens": 2048, "temperature": 0.9})
+            prompt, generation_config={"max_output_tokens": 6000, "temperature": 0.9})
         try:
             return resp.text
         except Exception:
