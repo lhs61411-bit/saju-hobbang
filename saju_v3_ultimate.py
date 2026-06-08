@@ -1893,18 +1893,35 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 """
 
     model = genai.GenerativeModel(model_name)
-    # 구 SDK는 GenerationConfig 객체로 줘야 max_output_tokens가 확실히 적용됨
+    # gemini-2.5 계열은 추론(thinking) 모델 → thinking이 출력토큰을 소모해 답변이 잘림
+    # 해결: thinking 최소화 + 출력 토큰 대폭 확대
+    gen_config = None
     try:
+        # 신형 config (thinking 제어 지원 시)
         gen_config = genai.types.GenerationConfig(
-            max_output_tokens=8192,
+            max_output_tokens=16384,
             temperature=0.85,
         )
     except Exception:
-        gen_config = {"max_output_tokens": 8192, "temperature": 0.85}
+        gen_config = {"max_output_tokens": 16384, "temperature": 0.85}
 
-    # 스트리밍 중 깨짐(500 deserializing) 방지 → 비스트리밍 1회 호출
+    # thinking_budget=0 으로 추론 토큰 소모 차단 (지원 모델에서만)
+    request_opts = {"generation_config": gen_config}
     try:
-        response = model.generate_content(prompt, generation_config=gen_config)
+        from google.generativeai import types as _gtypes
+        if hasattr(_gtypes, "ThinkingConfig"):
+            gen_config = _gtypes.GenerationConfig(
+                max_output_tokens=16384,
+                temperature=0.85,
+                thinking_config=_gtypes.ThinkingConfig(thinking_budget=0),
+            )
+            request_opts = {"generation_config": gen_config}
+    except Exception:
+        pass
+
+    # 스트리밍 중 깨짐 방지 → 비스트리밍 1회 호출
+    try:
+        response = model.generate_content(prompt, **request_opts)
         text = ""
         try:
             text = response.text
@@ -1912,15 +1929,18 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
             if response.candidates:
                 parts = response.candidates[0].content.parts
                 text = "".join(getattr(p, "text", "") for p in parts)
-        # 토큰 한계로 잘렸는지 확인 (finish_reason: MAX_TOKENS=2)
+        # 토큰 한계로 잘렸는지 확인
+        truncated = False
         try:
-            fr = response.candidates[0].finish_reason
-            if str(fr) in ("2", "FinishReason.MAX_TOKENS", "MAX_TOKENS"):
-                text += "\n\n_(분량 한계로 일부 생략되었습니다)_"
+            fr = str(response.candidates[0].finish_reason)
+            if fr in ("2", "FinishReason.MAX_TOKENS", "MAX_TOKENS"):
+                truncated = True
         except Exception:
             pass
         if not text:
             text = "리포트 생성에 실패했습니다. 다시 시도해 주세요."
+        elif truncated:
+            text += "\n\n_(분량이 길어 일부 생략되었습니다. 더 짧은 모델로 재시도하거나 다시 생성해 보세요.)_"
         yield text
     except Exception as e:
         yield f"\n\n[리포트 생성 오류] {str(e)[:200]}\n\n잠시 후 다시 시도하거나 모델을 변경해 주세요."
@@ -1935,6 +1955,7 @@ def chat_with_saju(saju_json: dict, history: list, user_msg: str):
         return "사이드바에 Gemini API 키를 입력해 주세요."
     model_name = st.session_state.get("gemini_model", "gemini-2.5-flash")
     genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(model_name)
 
     r = saju_json
     cur_year = datetime.now().year
@@ -1973,8 +1994,16 @@ def chat_with_saju(saju_json: dict, history: list, user_msg: str):
     )
 
     try:
-        resp = model.generate_content(
-            prompt, generation_config={"max_output_tokens": 2048, "temperature": 0.9})
+        chat_cfg = {"max_output_tokens": 4096, "temperature": 0.9}
+        try:
+            from google.generativeai import types as _gt
+            if hasattr(_gt, "ThinkingConfig"):
+                chat_cfg = _gt.GenerationConfig(
+                    max_output_tokens=4096, temperature=0.9,
+                    thinking_config=_gt.ThinkingConfig(thinking_budget=0))
+        except Exception:
+            pass
+        resp = model.generate_content(prompt, generation_config=chat_cfg)
         try:
             return resp.text
         except Exception:
@@ -3411,8 +3440,8 @@ def main():
             st.session_state["available_models"] = [
                 "gemini-2.5-flash",
                 "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
                 "gemini-3-flash",
-                "gemini-3.1-flash-lite",
             ]
             st.session_state["models_cache_ver"] = "v3"
 
@@ -3426,7 +3455,7 @@ def main():
         st.selectbox("모델 선택",
                      st.session_state["available_models"],
                      index=current_idx, key="gemini_model",
-                     help="권장: gemini-2.5-flash (2026년 무료 티어)")
+                     help="리포트가 자꾸 잘리면 gemini-2.5-flash-lite 로 바꿔보세요")
 
         # ── 사용 가능 모델 자동 조회 ──
         col_q, col_r = st.columns([3, 1])
