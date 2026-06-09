@@ -1782,11 +1782,12 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 - 현재 나이: 만 {cur_age}세
 
 [사주 원국]
-- 년주: {r["pillars"]["year"]["stem"]}{r["pillars"]["year"]["branch"]}
-- 월주: {r["pillars"]["month"]["stem"]}{r["pillars"]["month"]["branch"]}
-- 일주: {r["pillars"]["day"]["stem"]}{r["pillars"]["day"]["branch"]} (★ 본인)
-- 시주: {r["pillars"]["hour"]["stem"]}{r["pillars"]["hour"]["branch"]}
+- 년주: {r["pillars"]["year"]["stem"]}{r["pillars"]["year"]["branch"]} (십성: {r["all_sikshin"].get("year_stem","")}/{r["all_sikshin"].get("year_branch","")})
+- 월주: {r["pillars"]["month"]["stem"]}{r["pillars"]["month"]["branch"]} (십성: {r["all_sikshin"].get("month_stem","")}/{r["all_sikshin"].get("month_branch","")})
+- 일주: {r["pillars"]["day"]["stem"]}{r["pillars"]["day"]["branch"]} (★ 본인, 일지십성: {r["all_sikshin"].get("day_branch","")})
+- 시주: {r["pillars"]["hour"]["stem"]}{r["pillars"]["hour"]["branch"]} (십성: {r["all_sikshin"].get("hour_stem","")}/{r["all_sikshin"].get("hour_branch","")})
 - 일간 오행: {r["ilgan"]["ohaeng"]}, 납음: {r["ilgan"]["naeum"]}, 십이운성: {r["ilgan"]["twelve_fortune"]}
+- ※ 십성 분포를 보면 이 사람의 재능·기질의 치우침을 알 수 있음 (관성=조직/명예, 재성=재물/실리, 식상=표현/재능, 인성=학문/보호, 비겁=경쟁/독립)
 
 [오행 균형]
 - 점수: {json.dumps(r["ohaeng_score"], ensure_ascii=False)}
@@ -1825,9 +1826,10 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 [육친]
 - 배우자궁 충(沖) 여부: {"있음 (관계 부침 주의)" if spouse_warn else "없음"}
 
-[직업·건강 베이스라인]
-- 추천 직업군: {", ".join(r["career_health"]["추천직업"][:5])}
-- 약한 오행 (건강 주의): {r["career_health"]["약한오행"]} → {", ".join(r["career_health"]["건강주의"][:4])}
+[직업·건강 참고 자료 — 오행 기반 일반 경향일 뿐, 그대로 베끼지 말고 위의 사주 원국·십성·대운과 결합해 이 사람만의 분석으로 재해석할 것]
+- (참고) 오행상 추천 직업군: {", ".join(r["career_health"]["추천직업"][:5])}
+- (참고) 약한 오행: {r["career_health"]["약한오행"]} → 일반적으로 {", ".join(r["career_health"]["건강주의"][:4])} 관련 주의
+- (참고) 강한 오행: {r["career_health"]["강한오행"]}
 - 행운 색상: {", ".join(r["career_health"]["행운색상"])}
 - 행운 방위: {r["career_health"]["행운방위"]}
 
@@ -1886,49 +1888,55 @@ def generate_llm_report(saju_json: dict, extra: str = ""):
 - 12개 영역을 빠짐없이 모두 작성하고 마지막까지 완성하세요 (이게 가장 중요)
 - 각 영역은 5~6문장, 약 300자 분량으로 충실하고 풍부하게 작성
 - 명리 용어는 괄호로 쉽게 풀이 (예: 식신(食神, 표현·재능의 기운))
-- 사주 글자에 근거해 구체적으로, 영역 간 내용 반복 금지
 - 따뜻한 존댓말, 때때로 위트있게
 
+★★★ 가장 중요한 원칙 — 평면적 공식 대입 절대 금지 ★★★
+명리 해석의 가장 흔한 실수는 "양인격=리더십", "용신 목=초록색", "화 약함=심장 조심"처럼 한 글자만 보고 정해진 답을 대입하는 것입니다. 이러면 누구의 사주든 비슷한 말만 나옵니다. 절대 그러지 마세요.
+- 모든 항목에서 반드시 **여러 글자의 조합**으로 해석하세요: 같은 양인격이라도 그것이 '월지에 있는지 시지에 있는지', '어떤 글자와 합·충하는지', '대운이 그것을 돕는지 누르는지'에 따라 전혀 다른 사람이 됩니다.
+- 제공된 분류값(격국 이름, 용신 오행, 추천 직업, 행운 색 등)은 출발점일 뿐, 그대로 읊지 말고 "이 사람의 경우 그것이 [구체적 글자/관계] 때문에 [특수하게] 나타난다"는 식으로 한 단계 더 깊이 들어가세요.
+- "이 사람만의 특이점"을 최소 1개씩 각 항목에 넣으세요. 사주 4기둥 중 남들과 다른 독특한 조합을 짚어주세요.
+- 뻔하고 일반적인 문장이 떠오르면, 그것을 버리고 이 사람의 원국 글자를 다시 들여다보세요.
+
 ## 📜 1. 타고난 본질
-일간({r["ilgan"]["stem"]}, {r["ilgan"]["ohaeng"]})을 자연물에 비유한 성격, 강점·약점, 일지({r["pillars"]["day"]["branch"]})가 보여주는 속마음과 겉모습의 차이.
+일간({r["ilgan"]["stem"]}, {r["ilgan"]["ohaeng"]})을 자연물에 비유하되, 같은 일간이라도 일지({r["pillars"]["day"]["branch"]})·월지·주변 글자에 따라 성격이 어떻게 달라지는지 이 사람만의 조합으로 풀어주세요. 겉모습과 속마음의 차이, 강점·약점을 구체적 글자 근거와 함께.
 
 ## ⚖️ 2. 오행의 균형
-과한 기운과 부족한 기운, 그것이 성격·건강·인간관계에 미치는 영향, 부족한 기운을 채우는 실천법.
+과한/부족한 기운을 짚되, 단순히 "무엇이 부족하다"가 아니라 그 불균형이 이 사람의 어느 기둥에서 비롯되고 일상에서 어떻게 드러나는지 구체적으로. 채우는 실천법도 뻔하지 않게.
 
 ## 🏛️ 3. 격국
-{r["yukguk"]}의 의미와 이 사람이 가장 빛나는 무대, 세상과 관계 맺는 방식.
+{r["yukguk"]}의 일반적 의미를 한 줄로 소개한 뒤, **"격국 이름표"에 머물지 말고** 이 사람의 격국이 월지·십성·용신과 어떻게 엮여 실제로 어떤 모습으로 나타나는지 풀어주세요. 같은 격국이라도 사람마다 다름을 보여주세요.
 
 ## 🔑 4. 용신
-용신({r["yongshin"].get("용신","")})이 필요한 이유와 강화하는 직업·환경·습관, 기신({r["yongshin"].get("기신","")}) 주의점.
+용신({r["yongshin"].get("용신","")})이 왜 필요한지 이 사람의 강약·계절·구조 근거로 설명. 강화법은 "초록색 입으세요" 같은 단순 대입 말고, 이 사람의 생활에 맞는 구체적 방법으로. 기신({r["yongshin"].get("기신","")}) 주의점.
 
 ## 💰 5. 재물운
-재성 구조로 본 재물 그릇과 흐름, 사업형/직장형, 큰돈 들어오는 시기와 분야, 돈 관리 조언.
+재성(財星)이 이 사람 사주의 어디에 어떻게 있는지(혹은 없는지)를 근거로 재물 그릇과 흐름을 분석. 사업형/직장형, 큰돈 시기, 돈 들어오는 분야를 막연하지 않게 글자 근거로.
 
 ## 💼 6. 직업운
-잘 맞는 직군, 조직생활/창업 적합도, 30·40·50대 커리어 흐름과 승진 시기.
+**참고 직업군을 그대로 나열하지 말 것.** 이 사람의 십성 분포(관성·재성·식상·인성·비겁 중 무엇이 강한지)와 월주·시주, 용신을 결합해 "왜 이 직업이 맞는지" 근거를 들어 분석하세요. 조직형/창업형 적합도, 30·40·50대 커리어 흐름과 변화 시기를 구체적으로.
 
 ## ❤️ 7. 사랑·결혼운
-배우자궁({r["pillars"]["day"]["branch"]})으로 본 인연의 모습, 연애 스타일, 결혼 시기. {"배우자궁 충(沖)이 있어 관계 부침 주의. " if spouse_warn else ""}좋은 인연 지키는 법.
+배우자궁({r["pillars"]["day"]["branch"]})이 어떤 글자이고 다른 기둥과 어떤 관계(합/충)인지를 근거로 인연의 모습·연애 스타일·결혼 시기를 분석. {"배우자궁 충(沖)이 있어 관계 부침 주의. " if spouse_warn else ""}일반적인 연애 조언이 아니라 이 사람의 구조에 맞게.
 
 ## 🏥 8. 건강운
-약한 오행({r["career_health"]["약한오행"]})으로 주의할 신체 부위와 질환, 현재 대운의 건강 포인트, 음식·운동 조언.
+**"약한 오행이니 ○○ 조심"이라는 뻔한 일반론은 금지.** 약한 오행({r["career_health"]["약한오행"]})이 사주의 '어느 기둥'에 영향을 주는지, 강한 오행({r["career_health"]["강한오행"]})과의 불균형이 어떤 신체 시스템에 부담을 주는지, 현재 대운({cd["stem"]}{cd["branch"]})에서 그 약점이 어떻게 작용하는지를 이 사람만의 구조로 풀어내세요. 그 위에서 실질적인 음식·운동·생활습관 조언을.
 
 ## 🌊 9. 현재 대운
-대운 {cd["stem"]}{cd["branch"]}({cd['age']}~{cd['age']+9}세)의 기운과 분위기, 핵심 키워드 3개, 할 일과 조심할 것.
+대운 {cd["stem"]}{cd["branch"]}({cd['age']}~{cd['age']+9}세)이 이 사람의 원국·용신과 만나 어떤 작용(돕는지/누르는지)을 하는지를 근거로 분위기와 키워드 3개, 할 일/조심할 것을. 단순히 대운 글자 뜻풀이가 아니라 '이 사람에게' 어떤 시기인지.
 
 ## 📅 10. {cur_year}년 올해 운세
-올해 전체 흐름, 가장 좋은 달과 조심할 달, 재물·일·연애·건강 분야별 포인트.
+올해 세운이 이 사람 원국·대운과 어떻게 어울리는지 근거로 전체 흐름, 가장 좋은 달·조심할 달, 분야별(재물·일·연애·건강) 포인트를 구체적으로.
 
 ## 🔮 11. 다가올 3년
-{cur_year+1}~{cur_year+2}년의 큰 흐름과 기회·변화, 지금부터 준비할 것, 터닝포인트.
+{cur_year+1}~{cur_year+2}년 세운이 이 사람에게 주는 기회·변화를 원국과 연결해 분석, 지금부터 준비할 것, 터닝포인트.
 {extra_sections}
 
 ## ⭐ {final_num}. 종합 조언
-가장 빛나는 강점, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]}) 활용법, 따뜻한 마무리.
+앞 내용을 이 사람만의 한 문장으로 요약하는 강점, 좌우명 같은 조언, 행운의 색({", ".join(r["career_health"]["행운색상"][:2])})·방위({r["career_health"]["행운방위"]})·숫자({r["career_health"]["행운숫자"]})를 단순 나열이 아니라 이 사람 삶에 어떻게 쓸지 구체적으로, 따뜻한 마무리.
 
 {final_instr}"""
     model = genai.GenerativeModel(model_name)
-    gen_config = {"max_output_tokens": 13000, "temperature": 0.8}
+    gen_config = {"max_output_tokens": 13000, "temperature": 0.9}
     try:
         response = model.generate_content(prompt, generation_config=gen_config)
         text = ""
@@ -2010,6 +2018,59 @@ def chat_with_saju(saju_json: dict, history: list, user_msg: str):
             return "답변을 생성하지 못했습니다."
     except Exception as e:
         return f"오류: {str(e)[:150]}"
+
+
+def generate_goonghap_ai(r1: dict, r2: dict, gh: dict) -> str:
+    """두 사람의 궁합을 AI가 입체적으로 해석 (코드 계산값을 근거로)"""
+    import os
+    api_key = (st.session_state.get("gemini_api_key_input", "") or
+               os.environ.get("GEMINI_API_KEY", "")).strip()
+    if not api_key:
+        return ""
+    model_name = st.session_state.get("gemini_model", "gemini-2.5-flash-lite")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(model_name)
+
+    n1, n2 = gh.get("name1",""), gh.get("name2","")
+    data = (
+        f"[{n1}] 일주:{r1['ilgan']['stem']}{r1['pillars']['day']['branch']}({r1['ilgan']['ohaeng']}) "
+        f"격국:{r1['yukguk']} 용신:{r1['yongshin'].get('용신','')} "
+        f"오행:{json.dumps(r1['ohaeng_score'],ensure_ascii=False)}\n"
+        f"[{n2}] 일주:{r2['ilgan']['stem']}{r2['pillars']['day']['branch']}({r2['ilgan']['ohaeng']}) "
+        f"격국:{r2['yukguk']} 용신:{r2['yongshin'].get('용신','')} "
+        f"오행:{json.dumps(r2['ohaeng_score'],ensure_ascii=False)}\n"
+        f"[궁합 계산결과] 점수:{gh['score']}점({gh['grade']}) "
+        f"일지관계:{gh['일지관계']} 천간합:{gh.get('천간합','없음')} "
+        f"{n1}이 {n2}를 보는 십성:{gh.get('1이2보는십성','')} "
+        f"{n2}가 {n1}을 보는 십성:{gh.get('2가1보는십성','')}\n"
+        f"오행보완:{gh.get('오행보완',[])} 오행충돌:{gh.get('오행충돌',[])}"
+    )
+
+    prompt = (
+        "당신은 따뜻하고 통찰력 있는 명리학 궁합 상담가입니다.\n"
+        f"아래 두 사람({n1}, {n2})의 사주 데이터와 궁합 계산결과를 바탕으로 입체적인 궁합 해석을 써주세요.\n\n"
+        f"{data}\n\n"
+        "【작성 규칙 — 매우 중요】\n"
+        "- '일지가 합이니 천생연분' 같은 공식 대입 금지. 두 사람의 일간·오행·십성·용신이 "
+        "실제로 어떻게 끌리고 부딪히는지 구체적으로 풀어주세요.\n"
+        "- 같은 점수·같은 일지관계라도 두 사람의 조합에 따라 전혀 다른 관계임을 보여주세요.\n"
+        "- 다음을 자연스러운 흐름으로: ① 첫인상과 끌림의 이유 ② 함께할 때의 시너지 "
+        "③ 부딪히기 쉬운 지점과 그 이유 ④ 오래 좋게 지내는 실용적 비결\n"
+        "- 명리 용어는 괄호로 쉽게 풀이. 따뜻하고 친근한 존댓말. 약 400자.\n"
+        "- 점수가 낮아도 비관하지 말고 '어떻게 하면 좋아지는지' 희망적으로."
+    )
+    try:
+        resp = model.generate_content(
+            prompt, generation_config={"max_output_tokens": 4096, "temperature": 0.9})
+        try:
+            return resp.text
+        except Exception:
+            if resp.candidates:
+                parts = resp.candidates[0].content.parts
+                return "".join(getattr(p, "text", "") for p in parts)
+            return ""
+    except Exception as e:
+        return f"(AI 해석 생성 오류: {str(e)[:100]})"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2741,6 +2802,28 @@ def render_15tabs(r: dict, suri: dict, birth_year: int,
                 f'<div style="font-size:.9rem;color:#444;margin-top:.6rem;line-height:1.6;'
                 f'background:#f8f5ec;padding:.7rem;border-radius:6px">{gh["overall"]}</div>'
                 f'</div>', unsafe_allow_html=True)
+
+            # ── AI 입체 궁합 해석 ──
+            gh_ai_key = f"ghai_{n1}_{n2}_{gh['score']}"
+            if st.session_state.get("gemini_api_key_input","").strip():
+                if gh_ai_key in st.session_state:
+                    st.markdown('<div class="stitle">🔮 AI 궁합 심층 해석</div>',
+                                unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="llm-report-box">', unsafe_allow_html=True)
+                    st.markdown(st.session_state[gh_ai_key])
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    if st.button("🔄 AI 해석 다시 생성", key=f"regh_{gh_ai_key}"):
+                        st.session_state.pop(gh_ai_key, None)
+                        st.rerun()
+                else:
+                    if st.button("🔮 AI로 이 궁합 입체 해석 받기", key=f"gengh_{gh_ai_key}",
+                                 use_container_width=True, type="primary"):
+                        with st.spinner("🔮 두 분의 궁합을 AI가 분석 중..."):
+                            txt = generate_goonghap_ai(r, partner_result, gh)
+                        if txt:
+                            st.session_state[gh_ai_key] = txt
+                            st.rerun()
 
             # 강점·약점 카드
             st.markdown('<div class="stitle">💎 강점 & 약점</div>', unsafe_allow_html=True)
