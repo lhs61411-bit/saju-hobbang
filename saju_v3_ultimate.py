@@ -38,6 +38,40 @@ def save_api_key(key: str):
     except Exception:
         pass
 
+# ── 인물(사주 대상) 저장/로드 ──
+_PEOPLE_PATH = pathlib.Path.home() / ".saju_hobbang_people.json"
+
+def load_people() -> dict:
+    """저장된 인물 목록 반환 {이름: {hanja, gender, cal, year, month, day, hour, min, mbti}}"""
+    try:
+        import json
+        if _PEOPLE_PATH.exists():
+            return json.loads(_PEOPLE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+def save_person(name: str, info: dict):
+    try:
+        import json
+        people = load_people()
+        people[name] = info
+        _PEOPLE_PATH.write_text(
+            json.dumps(people, ensure_ascii=False), encoding="utf-8")
+        return True
+    except Exception:
+        return False
+
+def delete_person(name: str):
+    try:
+        import json
+        people = load_people()
+        people.pop(name, None)
+        _PEOPLE_PATH.write_text(
+            json.dumps(people, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
 # 음력→양력 변환 (korean_lunar_calendar 설치 시 동작)
 try:
     from korean_lunar_calendar import KoreanLunarCalendar as _KLC
@@ -2803,27 +2837,20 @@ def render_15tabs(r: dict, suri: dict, birth_year: int,
                 f'background:#f8f5ec;padding:.7rem;border-radius:6px">{gh["overall"]}</div>'
                 f'</div>', unsafe_allow_html=True)
 
-            # ── AI 입체 궁합 해석 ──
+            # ── AI 입체 궁합 해석 (자동 생성) ──
             gh_ai_key = f"ghai_{n1}_{n2}_{gh['score']}"
             if st.session_state.get("gemini_api_key_input","").strip():
+                if gh_ai_key not in st.session_state:
+                    with st.spinner("🔮 두 분의 궁합을 AI가 분석 중..."):
+                        txt = generate_goonghap_ai(r, partner_result, gh)
+                    if txt:
+                        st.session_state[gh_ai_key] = txt
                 if gh_ai_key in st.session_state:
                     st.markdown('<div class="stitle">🔮 AI 궁합 심층 해석</div>',
                                 unsafe_allow_html=True)
-                    st.markdown(
-                        f'<div class="llm-report-box">', unsafe_allow_html=True)
+                    st.markdown('<div class="llm-report-box">', unsafe_allow_html=True)
                     st.markdown(st.session_state[gh_ai_key])
                     st.markdown('</div>', unsafe_allow_html=True)
-                    if st.button("🔄 AI 해석 다시 생성", key=f"regh_{gh_ai_key}"):
-                        st.session_state.pop(gh_ai_key, None)
-                        st.rerun()
-                else:
-                    if st.button("🔮 AI로 이 궁합 입체 해석 받기", key=f"gengh_{gh_ai_key}",
-                                 use_container_width=True, type="primary"):
-                        with st.spinner("🔮 두 분의 궁합을 AI가 분석 중..."):
-                            txt = generate_goonghap_ai(r, partner_result, gh)
-                        if txt:
-                            st.session_state[gh_ai_key] = txt
-                            st.rerun()
 
             # 강점·약점 카드
             st.markdown('<div class="stitle">💎 강점 & 약점</div>', unsafe_allow_html=True)
@@ -3465,9 +3492,32 @@ def main():
                     if st.button("✕ 삭제", key="del_" + str(sid), use_container_width=True):
                         delete_sid = sid
 
+                # ── 저장된 인물 불러오기 ──
+                people = load_people()
+                if people:
+                    pick = st.selectbox(
+                        "💾 저장된 인물 불러오기",
+                        ["(직접 입력)"] + list(people.keys()),
+                        key="load_person_" + str(sid))
+                    if pick != "(직접 입력)" and st.button(
+                            f"📥 '{pick}' 정보 불러오기", key="loadbtn_" + str(sid),
+                            use_container_width=True):
+                        info = people[pick]
+                        st.session_state["name_"  + str(sid)] = pick
+                        st.session_state["hanja_" + str(sid)] = info.get("hanja","")
+                        st.session_state["gender_"+ str(sid)] = info.get("gender","남성")
+                        st.session_state["cal_"   + str(sid)] = info.get("cal","양력")
+                        st.session_state["year_"  + str(sid)] = info.get("year",1990)
+                        st.session_state["month_" + str(sid)] = info.get("month",6)
+                        st.session_state["day_"   + str(sid)] = info.get("day",15)
+                        st.session_state["hour_"  + str(sid)] = info.get("hour",12)
+                        st.session_state["min_"   + str(sid)] = info.get("min",0)
+                        st.session_state["mbti_"  + str(sid)] = info.get("mbti","모름")
+                        st.rerun()
+
                 st.text_input("이름 (한글)",       key="name_"   + str(sid), placeholder="홍길동",
                               help="표시용. 사주 계산은 생년월일시만 사용합니다.")
-                st.text_input("한자 이름 (선택)",   key="hanja_"  + str(sid), placeholder="洪吉東",
+                st.text_input("한자 이름",   key="hanja_"  + str(sid), placeholder="洪吉東",
                               help="입력 시 자원오행·수리성명학 자동 계산")
                 st.selectbox("성별", ["남성","여성"], key="gender_" + str(sid))
                 st.radio("달력 종류", ["양력","음력"], horizontal=True, key="cal_" + str(sid))
@@ -3484,6 +3534,26 @@ def main():
                               "ISTP","ISFP","ESTP","ESFP"],
                              key="mbti_" + str(sid),
                              help="입력 시 사주×MBTI 교차 분석이 리포트에 추가됩니다")
+
+                # ── 현재 정보 저장 ──
+                cur_name = st.session_state.get("name_" + str(sid), "").strip()
+                if cur_name and st.button("💾 이 인물 정보 저장", key="savep_" + str(sid),
+                                          use_container_width=True):
+                    info = {
+                        "hanja":  st.session_state.get("hanja_" + str(sid), ""),
+                        "gender": st.session_state.get("gender_"+ str(sid), "남성"),
+                        "cal":    st.session_state.get("cal_"   + str(sid), "양력"),
+                        "year":   st.session_state.get("year_"  + str(sid), 1990),
+                        "month":  st.session_state.get("month_" + str(sid), 6),
+                        "day":    st.session_state.get("day_"   + str(sid), 15),
+                        "hour":   st.session_state.get("hour_"  + str(sid), 12),
+                        "min":    st.session_state.get("min_"   + str(sid), 0),
+                        "mbti":   st.session_state.get("mbti_"  + str(sid), "모름"),
+                    }
+                    if save_person(cur_name, info):
+                        st.success(f"✓ '{cur_name}' 저장됨!")
+                    else:
+                        st.warning("저장 실패 (Cloud에선 세션 중에만 유지될 수 있어요)")
 
         if delete_sid is not None:
             st.session_state.slot_ids.remove(delete_sid)
